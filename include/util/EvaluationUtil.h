@@ -710,126 +710,126 @@ namespace EvaluationUtil {
         return measure;
     }
 
-    inline value_type cal_MAP(Method method, Parameter *parameter, Data *data, const bool replace_sub, DenseMatrix *rescalA,
-            vector<DenseMatrix> *rescalR,
-            DenseMatrix *transeA, DenseMatrix *transeR, DenseMatrix *holeE, DenseMatrix *holeP,
-            DFTI_DESCRIPTOR_HANDLE *descriptor, vector<SimpleWeight> *ensembleWeight, vector<min_max> *min_max_values=nullptr) {
+//    inline value_type cal_MAP(Method method, Parameter *parameter, Data *data, const bool replace_sub, DenseMatrix *rescalA,
+//            vector<DenseMatrix> *rescalR,
+//            DenseMatrix *transeA, DenseMatrix *transeR, DenseMatrix *holeE, DenseMatrix *holeP,
+//            DFTI_DESCRIPTOR_HANDLE *descriptor, vector<SimpleWeight> *ensembleWeight, vector<min_max> *min_max_values=nullptr) {
+//
+//        // Y is replaced
+//        map<pair<int, int>, vector<int> > &testXRelY = replace_sub ? data->testObjRel2Sub : data->testSubRel2Obj;
+//        int total_size = testXRelY.size();
+//
+//        int workload = total_size / parameter->num_of_thread_eval + ((total_size % parameter->num_of_thread_eval == 0) ? 0 : 1);
+//        vector<value_type> replaced_map(parameter->num_of_thread_eval, 0);
+//
+//        std::function<void(int)> compute_func = [&](int thread_index) -> void {
+//
+//            int start = thread_index * workload;
+//            int end = std::min(start + workload, total_size);
+//
+//            for (int i = start; i < end; i++) {
+//
+//                pair<int, int> &XRelKey = replace_sub ? data->testObjRel2SubKeys[i] : data->testSubRel2ObjKeys[i];
+//
+//                vector<int> &existed_Ys = testXRelY.find(XRelKey)->second;
+//                unordered_set<string> trueKeys;
+//
+//                vector<pair<string, value_type> > replaceYResult(existed_Ys.size() * (parameter->num_of_replaced_entities + 1));
+//                int replaceYResultIndex = 0;
+//
+//                for (int j = 0; j < existed_Ys.size(); j++) {
+//                    int existed_Y = existed_Ys[j];
+//
+//                    string str_key;
+//                    value_type score;
+//
+//                    if(replace_sub){
+//                        str_key = to_string(existed_Y) + "," + to_string(XRelKey.second) + "," + to_string(XRelKey.first);
+//                        score = cal_score(method, *parameter, existed_Y, XRelKey.second, XRelKey.first, rescalA, rescalR, transeA, transeR, holeE, holeP, descriptor, ensembleWeight, min_max_values);
+//                    } else {
+//                        str_key = to_string(XRelKey.first) + "," + to_string(XRelKey.second) + "," + to_string(existed_Y);
+//                        score = cal_score(method, *parameter, XRelKey.first, XRelKey.second, existed_Y, rescalA, rescalR, transeA, transeR, holeE, holeP, descriptor, ensembleWeight, min_max_values);
+//                    }
+//
+//                    // put true tuple
+//                    trueKeys.insert(str_key);
+//
+//                    replaceYResult[replaceYResultIndex] = make_pair(str_key, score);
+//                    replaceYResultIndex++;
+//
+//                    for (int k = 0; k < parameter->num_of_replaced_entities; k++) {
+//                        int random_Y_id = RandomUtil::uniform_int(0, data->N);
+//                        value_type score;
+//                        string str_key;
+//
+//                        if(replace_sub){
+//                            while(data->faked_s_tuple_exist(random_Y_id, XRelKey.second, XRelKey.first)){
+//                                random_Y_id = RandomUtil::uniform_int(0, data->N);
+//                            }
+//                            score = cal_score(method, *parameter, random_Y_id, XRelKey.second, XRelKey.first, rescalA, rescalR, transeA, transeR, holeE, holeP, descriptor, ensembleWeight, min_max_values);
+//                            str_key = to_string(random_Y_id) + "," + to_string(XRelKey.second) + "," + to_string(XRelKey.first);
+//                        } else {
+//                            while(data->faked_o_tuple_exist(XRelKey.first, XRelKey.second, random_Y_id)){
+//                                random_Y_id = RandomUtil::uniform_int(0, data->N);
+//                            }
+//                            score = cal_score(method, *parameter, XRelKey.first, XRelKey.second, random_Y_id, rescalA, rescalR, transeA, transeR, holeE, holeP, descriptor, ensembleWeight, min_max_values);
+//                            str_key = to_string(XRelKey.first) + "," + to_string(XRelKey.second) + "," + to_string(random_Y_id);
+//                        }
+//
+//                        replaceYResult[replaceYResultIndex] = make_pair(str_key, score);
+//                        replaceYResultIndex++;
+//                    }
+//                }
+//
+//                // sort
+//                if(method == m_TransE){
+//                    std::sort(replaceYResult.begin(), replaceYResult.end(), &CompareUtil::pairLessCompare<string>);
+//                } else {
+//                    std::sort(replaceYResult.begin(), replaceYResult.end(), &CompareUtil::pairGreaterCompare<string>);
+//                }
+//
+//                value_type map_value = 0;
+//                int true_key_found = 0;
+//                for (int list_index = 0; list_index < replaceYResult.size(); list_index++) {
+//                    if(trueKeys.find(replaceYResult[list_index].first)!=trueKeys.end()){
+//                        true_key_found++;
+//                        map_value += true_key_found / (list_index + 1.0);
+//                    }
+//                }
+//
+//                replaced_map[thread_index] += map_value / true_key_found;
+//            }
+//
+//        };
+//
+//        ThreadUtil::execute_threads(compute_func, parameter->num_of_thread_eval);
+//
+//        value_type global_map = 0;
+//
+//        for(int thread_index=0;thread_index<parameter->num_of_thread_eval;thread_index++){
+//            global_map += replaced_map[thread_index];
+//        }
+//
+//        return replace_sub ? (global_map/data->testObjRel2Sub.size()) : (global_map/data->testSubRel2Obj.size());
+//    }
 
-        // Y is replaced
-        map<pair<int, int>, vector<int> > &testXRelY = replace_sub ? data->testObjRel2Sub : data->testSubRel2Obj;
-        int total_size = testXRelY.size();
-
-        int workload = total_size / parameter->num_of_thread_eval + ((total_size % parameter->num_of_thread_eval == 0) ? 0 : 1);
-        vector<value_type> replaced_map(parameter->num_of_thread_eval, 0);
-
-        std::function<void(int)> compute_func = [&](int thread_index) -> void {
-
-            int start = thread_index * workload;
-            int end = std::min(start + workload, total_size);
-
-            for (int i = start; i < end; i++) {
-
-                pair<int, int> &XRelKey = replace_sub ? data->testObjRel2SubKeys[i] : data->testSubRel2ObjKeys[i];
-
-                vector<int> &existed_Ys = testXRelY.find(XRelKey)->second;
-                unordered_set<string> trueKeys;
-
-                vector<pair<string, value_type> > replaceYResult(existed_Ys.size() * (parameter->num_of_replaced_entities + 1));
-                int replaceYResultIndex = 0;
-
-                for (int j = 0; j < existed_Ys.size(); j++) {
-                    int existed_Y = existed_Ys[j];
-
-                    string str_key;
-                    value_type score;
-
-                    if(replace_sub){
-                        str_key = to_string(existed_Y) + "," + to_string(XRelKey.second) + "," + to_string(XRelKey.first);
-                        score = cal_score(method, *parameter, existed_Y, XRelKey.second, XRelKey.first, rescalA, rescalR, transeA, transeR, holeE, holeP, descriptor, ensembleWeight, min_max_values);
-                    } else {
-                        str_key = to_string(XRelKey.first) + "," + to_string(XRelKey.second) + "," + to_string(existed_Y);
-                        score = cal_score(method, *parameter, XRelKey.first, XRelKey.second, existed_Y, rescalA, rescalR, transeA, transeR, holeE, holeP, descriptor, ensembleWeight, min_max_values);
-                    }
-
-                    // put true tuple
-                    trueKeys.insert(str_key);
-
-                    replaceYResult[replaceYResultIndex] = make_pair(str_key, score);
-                    replaceYResultIndex++;
-
-                    for (int k = 0; k < parameter->num_of_replaced_entities; k++) {
-                        int random_Y_id = RandomUtil::uniform_int(0, data->N);
-                        value_type score;
-                        string str_key;
-
-                        if(replace_sub){
-                            while(data->faked_s_tuple_exist(random_Y_id, XRelKey.second, XRelKey.first)){
-                                random_Y_id = RandomUtil::uniform_int(0, data->N);
-                            }
-                            score = cal_score(method, *parameter, random_Y_id, XRelKey.second, XRelKey.first, rescalA, rescalR, transeA, transeR, holeE, holeP, descriptor, ensembleWeight, min_max_values);
-                            str_key = to_string(random_Y_id) + "," + to_string(XRelKey.second) + "," + to_string(XRelKey.first);
-                        } else {
-                            while(data->faked_o_tuple_exist(XRelKey.first, XRelKey.second, random_Y_id)){
-                                random_Y_id = RandomUtil::uniform_int(0, data->N);
-                            }
-                            score = cal_score(method, *parameter, XRelKey.first, XRelKey.second, random_Y_id, rescalA, rescalR, transeA, transeR, holeE, holeP, descriptor, ensembleWeight, min_max_values);
-                            str_key = to_string(XRelKey.first) + "," + to_string(XRelKey.second) + "," + to_string(random_Y_id);
-                        }
-
-                        replaceYResult[replaceYResultIndex] = make_pair(str_key, score);
-                        replaceYResultIndex++;
-                    }
-                }
-
-                // sort
-                if(method == m_TransE){
-                    std::sort(replaceYResult.begin(), replaceYResult.end(), &CompareUtil::pairLessCompare<string>);
-                } else {
-                    std::sort(replaceYResult.begin(), replaceYResult.end(), &CompareUtil::pairGreaterCompare<string>);
-                }
-
-                value_type map_value = 0;
-                int true_key_found = 0;
-                for (int list_index = 0; list_index < replaceYResult.size(); list_index++) {
-                    if(trueKeys.find(replaceYResult[list_index].first)!=trueKeys.end()){
-                        true_key_found++;
-                        map_value += true_key_found / (list_index + 1.0);
-                    }
-                }
-
-                replaced_map[thread_index] += map_value / true_key_found;
-            }
-
-        };
-
-        ThreadUtil::execute_threads(compute_func, parameter->num_of_thread_eval);
-
-        value_type global_map = 0;
-
-        for(int thread_index=0;thread_index<parameter->num_of_thread_eval;thread_index++){
-            global_map += replaced_map[thread_index];
-        }
-
-        return replace_sub ? (global_map/data->testObjRel2Sub.size()) : (global_map/data->testSubRel2Obj.size());
-    }
-
-    inline pair<value_type, value_type> eval_MAP(Method method, Parameter *parameter, Data *data, DenseMatrix *rescalA, vector<DenseMatrix> *rescalR,
-                                                 DenseMatrix *transeA, DenseMatrix *transeR, DenseMatrix *holeE, DenseMatrix *holeP, DFTI_DESCRIPTOR_HANDLE *descriptor,
-                                                 vector<SimpleWeight> *ensembleWeight, vector<min_max> *min_max_values=nullptr) {
-
-        if(method==Method::m_HOLE){
-            cerr << "EvaluationUtil: eval_hit_rate should transform HOLE to RESCAL_RANK first than call m_RESCAL_RANK for evaluation!" << endl;
-            exit(1);
-        } else if(method==Method::m_HTLREnsemble){
-            cerr << "EvaluationUtil: eval_hit_rate should transform HOLE to RESCAL_RANK first than call m_RTLREnsemble for evaluation!" << endl;
-            exit(1);
-        }
-
-        value_type global_sub_map = cal_MAP(method, parameter, data, true, rescalA, rescalR, transeA, transeR, holeE, holeP, descriptor, ensembleWeight, min_max_values);
-        value_type global_obj_map = cal_MAP(method, parameter, data, false, rescalA, rescalR, transeA, transeR, holeE, holeP, descriptor, ensembleWeight, min_max_values);
-
-        return make_pair(global_obj_map, global_sub_map);
-    }
+//    inline pair<value_type, value_type> eval_MAP(Method method, Parameter *parameter, Data *data, DenseMatrix *rescalA, vector<DenseMatrix> *rescalR,
+//                                                 DenseMatrix *transeA, DenseMatrix *transeR, DenseMatrix *holeE, DenseMatrix *holeP, DFTI_DESCRIPTOR_HANDLE *descriptor,
+//                                                 vector<SimpleWeight> *ensembleWeight, vector<min_max> *min_max_values=nullptr) {
+//
+//        if(method==Method::m_HOLE){
+//            cerr << "EvaluationUtil: eval_hit_rate should transform HOLE to RESCAL_RANK first than call m_RESCAL_RANK for evaluation!" << endl;
+//            exit(1);
+//        } else if(method==Method::m_HTLREnsemble){
+//            cerr << "EvaluationUtil: eval_hit_rate should transform HOLE to RESCAL_RANK first than call m_RTLREnsemble for evaluation!" << endl;
+//            exit(1);
+//        }
+//
+//        value_type global_sub_map = cal_MAP(method, parameter, data, true, rescalA, rescalR, transeA, transeR, holeE, holeP, descriptor, ensembleWeight, min_max_values);
+//        value_type global_obj_map = cal_MAP(method, parameter, data, false, rescalA, rescalR, transeA, transeR, holeE, holeP, descriptor, ensembleWeight, min_max_values);
+//
+//        return make_pair(global_obj_map, global_sub_map);
+//    }
 
     set<pair<int, int> > sub_obj_set;
     map<pair<int, int>, int> id_mapping;
@@ -1036,23 +1036,23 @@ namespace EvaluationUtil {
 
     }
 
-    inline value_type eval_rescal_train(Parameter *parameter, Data *data, DenseMatrix &A, vector<DenseMatrix> &R) {
-
-        value_type loss = 0;
-
-        Sample sample;
-        for (int i = 0; i < data->training_triples.size(); i++) {
-            Sampler::random_sample(*data, sample, i);
-            value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, parameter->rescal_D, A, R);
-            value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, parameter->rescal_D, A, R);
-            value_type tmp = positive_score - negative_score - parameter->margin;
-            if(tmp < 0) {
-                loss -= tmp;
-            }
-        }
-
-        return loss;
-    }
+//    inline value_type eval_rescal_train(Parameter *parameter, Data *data, DenseMatrix &A, vector<DenseMatrix> &R) {
+//
+//        value_type loss = 0;
+//
+//        Sample sample;
+//        for (int i = 0; i < data->training_triples.size(); i++) {
+//            Sampler::random_sample(*data, sample, i);
+//            value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, parameter->rescal_D, A, R);
+//            value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, parameter->rescal_D, A, R);
+//            value_type tmp = positive_score - negative_score - parameter->margin;
+//            if(tmp < 0) {
+//                loss -= tmp;
+//            }
+//        }
+//
+//        return loss;
+//    }
 
     inline hit_rate eval_rescal_train(Parameter *parameter, Data *data, DenseMatrix &A, vector<DenseMatrix> &R, const string output_folder) {
 

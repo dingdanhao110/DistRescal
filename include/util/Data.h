@@ -417,7 +417,7 @@ public:
     }
 
     // check whether faked triple already exists in training data
-    bool faked_tuple_exist_train(const int relation_id, const int subject_id, const int object_id) {
+    bool faked_tuple_exist_train(const int relation_id, const int subject_id, const int object_id)const {
         auto train_ptr = relation2tupleList_mapping.find(relation_id);
         if (train_ptr != relation2tupleList_mapping.end()) {
             for (Tuple<int> tuple:train_ptr->second) {

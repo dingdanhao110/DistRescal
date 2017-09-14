@@ -131,5 +131,5 @@ enum Method{m_RESCAL=0, m_RESCAL_RANK=1, m_TransE=2, m_HOLE=3, m_RTLREnsemble=4,
 
 ////////////////// Types //////////////////////
 
-
+const value_type min_not_zero_value = 1e-7;
 #endif //BASEUTIL_H
