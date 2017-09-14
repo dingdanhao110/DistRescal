@@ -20,8 +20,8 @@ struct Sample {
 
 namespace Sampler {
 
-    inline void random_sample(Data &data, Sample &sample, const int random_idx) {
-        Triple<int> &true_triple = data.training_triples[random_idx];
+    inline void random_sample(const Data &data, Sample &sample, const int random_idx) {
+        const Triple<int> &true_triple = data.training_triples.at(random_idx);
         sample.relation_id = true_triple.relation;
         sample.p_sub = true_triple.subject;
         sample.p_obj = true_triple.object;
@@ -45,8 +45,8 @@ namespace Sampler {
         }
     }
 
-    inline void random_sample_multithreaded(Data &data, Sample &sample, const int random_idx) {
-        Triple<int> &true_triple = data.training_triples[random_idx];
+    inline void random_sample_multithreaded(const Data &data, Sample &sample, const int random_idx) {
+        const Triple<int> &true_triple = data.training_triples.at(random_idx);
         sample.relation_id = true_triple.relation;
         sample.p_sub = true_triple.subject;
         sample.p_obj = true_triple.object;
