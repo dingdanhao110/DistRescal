@@ -60,10 +60,8 @@ set(lib_HDRS
         include/struct/Tuple.h
         include/struct/Weight.h
         include/struct/Min_Max.h
-        include/alg/Optimizer.h
         include/alg/Sampler.h
-        include/alg/RESCAL_LOCK.h
-        include/alg/RESCAL_NAIVE.h include/alg/RESCAL_RANK.h)
+        include/alg/RESCAL_NAIVE.h include/alg/MyOptimizer.h)
 
 
 add_library(lib SHARED ${lib_HDRS} ${lib_SRCS})
@@ -73,5 +71,4 @@ set_target_properties(lib PROPERTIES LINKER_LANGUAGE CXX)
 link_libraries(lib ${MKL_LIBRARIES} ${TBB_LIBRARIES} ${Boost_LIBRARIES} )
 
 add_executable(testThreadPool src/testThreadPool.cpp)
-add_executable(runRESCAL_LOCK src/runRESCAL_LOCK.cpp)
 add_executable(runRESCAL_NAIVE src/runRESCAL_NAIVE.cpp)
