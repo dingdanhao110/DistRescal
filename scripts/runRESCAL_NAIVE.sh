@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-rm -rf build-rk
-mkdir build-rk
-cd build-rk
-cmake ../../
-make
+#rm -rf build-rk
+#mkdir build-rk
+#cd build-rk
+#cmake ../../
+#make
 
 #train_file=".../../../rescal_data/FB15k/freebase_mtr100_mte100-train.txt"
 #test_file="../../../rescal_data/FB15k/freebase_mtr100_mte100-test.txt"

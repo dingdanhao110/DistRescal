@@ -38,7 +38,8 @@ set(lib_HDRS
    include/struct/Tuple.h
    include/alg/Sampler.h
    include/alg/RESCAL_NAIVE.h
-   include/alg/MarginBasedOptimizer.h)
+   include/alg/MarginBasedOptimizer.h
+        include/alg/RESCAL_LOCK.h include/alg/Optimizer.h)
 
 set(threadpool
     extern/boost/threadpool.hpp)
@@ -53,6 +54,10 @@ target_link_libraries(testThreadPool ${Boost_LIBRARIES})
 add_executable(runRESCAL_NAIVE src/runRESCAL_NAIVE.cpp)
 target_link_libraries(runRESCAL_NAIVE lib)
 target_link_libraries(runRESCAL_NAIVE ${Boost_LIBRARIES})
+
+add_executable(runRESCAL_LOCK src/runRESCAL_LOCK.cpp)
+target_link_libraries(runRESCAL_LOCK lib)
+target_link_libraries(runRESCAL_LOCK ${Boost_LIBRARIES})
 
 add_executable(testMatrixProduct src/testMatrixProduct.cpp)
 target_link_libraries(testMatrixProduct lib)

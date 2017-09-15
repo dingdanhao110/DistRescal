@@ -1,5 +1,9 @@
-#ifndef RESCAL_NAIVE_H
-#define RESCAL_NAIVE_H
+//
+// Created by dhding on 9/15/17.
+//
+
+#ifndef DISTRESCAL_RESCAL_LOCK_H
+#define DISTRESCAL_RESCAL_LOCK_H
 
 #include "util/Base.h"
 #include "util/RandomUtil.h"
@@ -10,24 +14,126 @@
 #include "util/Data.h"
 #include "util/Calculator.h"
 #include "util/Parameter.h"
-#include "alg/MarginBasedOptimizer.h"
+#include "alg/Optimizer.h"
 
 using namespace EvaluationUtil;
 using namespace FileUtil;
 using namespace Calculator;
 
 /**
- * Margin based RESCAL
+ * Margin based RESCAL_LOCK
  */
 template<typename OptimizerType>
-class RESCAL_NAIVE : virtual public MarginBasedOptimizer<OptimizerType> {
+class RESCAL_LOCK {
+public:
+    /**
+     * Start to train
+     */
+    void train() {
 
+        RandomUtil::init_seed();
+        initialize();
+
+        Monitor timer;
+
+        std::vector<int> indices(data->num_of_training_triples);
+        std::iota(std::begin(indices), std::end(indices), 0);
+
+//        if (parameter.print_log_header) {
+//            print_log(get_log_header());
+//        }
+
+        int workload = data->num_of_training_triples / parameter->num_of_thread;
+
+        value_type total_time = 0.0;
+
+        for (int epoch = current_epoch; epoch <= parameter->epoch; epoch++) {
+
+            violations = 0;
+            loss = 0;
+
+            timer.start();
+
+            std::random_shuffle(indices.begin(), indices.end());
+
+            for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
+
+                computation_thread_pool->schedule(std::bind([&](const int thread_index) {
+
+                    int start = thread_index * workload;
+                    int end = std::min(start + workload, data->num_of_training_triples);
+                    Sample sample;
+                    for (int n = start; n < end; n++) {
+                        if(parameter->num_of_thread == 1){
+                            Sampler::random_sample(*data, sample, indices[n]);
+                        } else {
+                            Sampler::random_sample_multithreaded(*data, sample, indices[n]);
+                        }
+                        //cout<<"Thread "<<std::this_thread::get_id()<<": Work assigned"<<endl;
+                        update(sample);
+                    }
+
+                }, thread_index));
+            }
+
+            computation_thread_pool->wait();
+
+            timer.stop();
+
+            total_time += timer.getElapsedTime();
+
+            cout << "------------------------" << endl;
+
+            cout << "epoch " << epoch << ", time " << timer.getElapsedTime() << " secs" << endl;
+
+            cout << "violations: " << violations << endl;
+
+            if(parameter->show_loss) {
+
+                timer.start();
+
+                loss = cal_loss();
+
+                cout << "loss: " << loss << endl;
+
+                timer.stop();
+
+                cout << "time for computing loss: " << timer.getElapsedTime() << " secs" << endl;
+            }
+
+            if (epoch % parameter->print_epoch == 0) {
+
+                timer.start();
+
+                eval(epoch);
+
+                timer.stop();
+
+                cout << "time for evaluation: " << timer.getElapsedTime() << " secs" << endl;
+
+            }
+
+            if (epoch % parameter->output_epoch == 0) {
+                output(epoch);
+            }
+
+            cout << "------------------------" << endl;
+        }
+
+        cout << "Total Training Time: " << total_time << " secs" << endl;
+    }
 protected:
-    using MarginBasedOptimizer<OptimizerType>::data;
-    using MarginBasedOptimizer<OptimizerType>::parameter;
-    using MarginBasedOptimizer<OptimizerType>::current_epoch;
-    using MarginBasedOptimizer<OptimizerType>::violations;
-    using MarginBasedOptimizer<OptimizerType>::update_grad;
+    // Functor object of update function
+    OptimizerType update_grad;
+
+    pool *computation_thread_pool = nullptr;
+    Parameter *parameter= nullptr;
+    Data *data= nullptr;
+    int current_epoch=0;
+    int violations=0;
+    value_type loss=0;
+    std::mutex* A_locks;
+    std::mutex* R_locks;
 
     value_type *rescalA;//DenseMatrix, UNSAFE!
     value_type *rescalR;//vector<DenseMatrix>, UNSAFE!
@@ -76,6 +182,21 @@ protected:
     }
 
     void update(const Sample &sample) {
+        //cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
+        std::unique_lock<std::mutex> lock5(R_locks[sample.relation_id], std::defer_lock);
+        std::unique_lock<std::mutex> lock1(A_locks[sample.p_obj], std::defer_lock);
+        std::unique_lock<std::mutex> lock3(A_locks[sample.p_sub], std::defer_lock);
+        if (sample.p_sub != sample.n_sub) {
+            std::unique_lock<std::mutex> lock2(A_locks[sample.n_sub], std::defer_lock);
+            std::lock(lock1, lock2, lock3, lock5);
+        }
+        else //sample.p_obj != sample.n_obj
+        {
+            std::unique_lock<std::mutex> lock4(A_locks[sample.n_obj], std::defer_lock);
+            std::lock(lock1, lock4, lock3, lock5);
+        }
+
+        //cout<<"Thread "<<std::this_thread::get_id()<<": lock set!"<<endl;
 
         value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR, parameter);
         value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR, parameter);
@@ -274,14 +395,23 @@ protected:
     }
 
 public:
-    explicit RESCAL_NAIVE<OptimizerType>(Parameter &parameter, Data &data) : MarginBasedOptimizer<OptimizerType>(parameter, data) {}
+    explicit RESCAL_LOCK<OptimizerType>(Parameter &parameter, Data &data) {
+        this->parameter=&parameter;
+        this->data=&data;
+        computation_thread_pool = new pool(parameter.num_of_thread);
+        A_locks=new mutex[data.num_of_entity];
+        R_locks=new mutex[data.num_of_relation];
+    }
 
-    ~RESCAL_NAIVE() {
+    ~RESCAL_LOCK() {
         delete[] rescalA;
         delete[] rescalR;
         delete[] rescalA_G;
         delete[] rescalR_G;
+        delete computation_thread_pool;
+        delete[] A_locks;
+        delete[] R_locks;
     }
 };
 
-#endif //RESCAL_NAIVE_H
+#endif //DISTRESCAL_RESCAL_LOCK_H
