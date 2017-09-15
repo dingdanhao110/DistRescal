@@ -198,7 +198,7 @@ namespace EvaluationUtil {
                 // then replace object with other entities
                 // A_i * RAT
                 A_row = rescalA + test_tuple.subject * parameter->dimension;
-                matrix_product_transpose(A_row, RAT, score_list, 1, parameter->dimension, parameter->dimension, data->num_of_entity);
+                matrix_product(A_row, RAT, score_list, 1, parameter->dimension, parameter->dimension, data->num_of_entity);
 
                 result_filtering_index = 0;
 
@@ -422,17 +422,17 @@ namespace EvaluationUtil {
             int workload = size4relation / parameter->num_of_eval_thread +
                            ((size4relation % parameter->num_of_eval_thread == 0) ? 0 : 1);
 
-            // first: entity id, second: score
-#ifdef detailed_eval
-            vector<pair<int, value_type> > result(data->num_of_entity);
-#endif
-            vector<pair<int, value_type> > result_filtering(data->num_of_entity);
-            int result_filtering_index = 0;
-
             std::function<void(int)> compute_func = [&](int thread_index) -> void {
 
                 int start = thread_index * workload;
                 int end = std::min(start + workload, size4relation);
+
+                // first: entity id, second: score
+#ifdef detailed_eval
+                vector<pair<int, value_type> > result(data->num_of_entity);
+#endif
+                vector<pair<int, value_type> > result_filtering(data->num_of_entity);
+                int result_filtering_index = 0;
 
 #ifdef detailed_eval
                 vector<ull> &counts_s = rel_counts_s[thread_index];
@@ -544,7 +544,7 @@ namespace EvaluationUtil {
                     // then replace object with other entities
                     // A_i * RAT
                     A_row = rescalA + test_tuple.subject * parameter->dimension;
-                    matrix_product_transpose(A_row, RAT, score_list, 1, parameter->dimension, parameter->dimension,
+                    matrix_product(A_row, RAT, score_list, 1, parameter->dimension, parameter->dimension,
                                              data->num_of_entity);
 
                     result_filtering_index = 0;
@@ -631,9 +631,8 @@ namespace EvaluationUtil {
 #endif
                 }
 
+                delete[] score_list;
 
-                delete[] AR;
-                delete[] RAT;
             };
 
             for(int thread_index = 0; thread_index < parameter->num_of_eval_thread; thread_index++) {
@@ -642,7 +641,11 @@ namespace EvaluationUtil {
 
             // wait until all threads finish
             eval_thread_pool->wait();
+
         }
+
+        delete[] AR;
+        delete[] RAT;
 
         hit_rate measure;
 
