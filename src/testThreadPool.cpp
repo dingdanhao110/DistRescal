@@ -1,9 +1,9 @@
 #include <iostream>
 
-#include "../include/boost/threadpool.hpp"
 #include "../include/util/Monitor.h"
-
+#include "../extern/boost/threadpool.hpp"
 using namespace boost::threadpool;
+
 
 void single_threaded(const unsigned long long count) {
 
@@ -24,7 +24,7 @@ void single_threaded(const unsigned long long count) {
 
 void multi_threaded(const unsigned long long count, const int num_of_thread) {
 
-    // we do not need to creat new threads but reuse existed threads in the pool
+    // we do not need to create new threads but reuse existed threads in the pool
     // this saves the cost for frequently creating new threads
     pool *thread_pool = new pool(num_of_thread);
 

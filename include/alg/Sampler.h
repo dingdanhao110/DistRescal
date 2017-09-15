@@ -27,7 +27,7 @@ namespace Sampler {
         sample.p_obj = true_triple.object;
 
         while (true) {
-            int entity_id = RandomUtil::uniform_int(0, data.N);
+            int entity_id = RandomUtil::uniform_int(0, data.num_of_entity);
 
             if (RandomUtil::uniform_int(0, 2) > 0) {
                 sample.n_obj = sample.p_obj;
@@ -52,7 +52,7 @@ namespace Sampler {
         sample.p_obj = true_triple.object;
 
         while (true) {
-            int entity_id = RandomUtil::randint_multithreaded(0, data.N);
+            int entity_id = RandomUtil::randint_multithreaded(0, data.num_of_entity);
 
             if (RandomUtil::randint_multithreaded(0, 2) > 0) {
                 sample.n_obj = sample.p_obj;
