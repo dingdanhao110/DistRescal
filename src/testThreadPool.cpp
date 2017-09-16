@@ -1,6 +1,5 @@
 #include <iostream>
-
-#include "../include/util/Monitor.h"
+#include "../util/Monitor.h"
 #include "../extern/boost/threadpool.hpp"
 using namespace boost::threadpool;
 

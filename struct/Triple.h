@@ -1,7 +1,7 @@
 #ifndef TRIPLE_H
 #define TRIPLE_H
 
-#include "util/Base.h"
+#include "../util/Base.h"
 
 template<typename T>
 class Triple{

@@ -1,7 +1,7 @@
 #ifndef COMPAREUTIL_H
 #define COMPAREUTIL_H
 
-#include "util/Base.h"
+#include "../util/Base.h"
 
 namespace CompareUtil {
     // This function returns true if the first pair is "larger"

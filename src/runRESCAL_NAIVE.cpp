@@ -1,8 +1,8 @@
-#include "util/Base.h"
-#include "util/FileUtil.h"
-#include "util/Data.h"
-#include "alg/RESCAL_NAIVE.h"
-#include "util/Parameter.h"
+#include "../util/Base.h"
+#include "../util/FileUtil.h"
+#include "../util/Data.h"
+#include "../alg/RESCAL_NAIVE.h"
+#include "../util/Parameter.h"
 
 void print_info(Parameter &parameter, Data &data){
     cout << "------------------------" << endl;

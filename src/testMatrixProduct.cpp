@@ -1,5 +1,5 @@
-#include <util/Calculator.h>
-#include "util/Base.h"
+#include "../util/Calculator.h"
+#include "../util/Base.h"
 
 int main(int argc, char **argv) {
     // 1: A * B

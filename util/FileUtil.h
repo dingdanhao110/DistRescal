@@ -1,8 +1,8 @@
 #ifndef FILEUTIL_H
 #define FILEUTIL_H
 
-#include "util/Base.h"
-#include "struct/Triple.h"
+#include "Base.h"
+#include "../struct/Triple.h"
 #include <fstream>
 
 using std::fstream;

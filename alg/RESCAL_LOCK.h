@@ -5,16 +5,16 @@
 #ifndef DISTRESCAL_RESCAL_LOCK_H
 #define DISTRESCAL_RESCAL_LOCK_H
 
-#include "util/Base.h"
-#include "util/RandomUtil.h"
-#include "util/Monitor.h"
-#include "util/FileUtil.h"
-#include "util/CompareUtil.h"
-#include "util/EvaluationUtil.h"
-#include "util/Data.h"
-#include "util/Calculator.h"
-#include "util/Parameter.h"
-#include "alg/Optimizer.h"
+#include "../util/Base.h"
+#include "../util/RandomUtil.h"
+#include "../util/Monitor.h"
+#include "../util/FileUtil.h"
+#include "../util/CompareUtil.h"
+#include "../util/EvaluationUtil.h"
+#include "../util/Data.h"
+#include "../util/Calculator.h"
+#include "../util/Parameter.h"
+#include "../alg/Optimizer.h"
 
 using namespace EvaluationUtil;
 using namespace FileUtil;

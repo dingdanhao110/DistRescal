@@ -1,8 +1,8 @@
 #ifndef CALCULATOR_H
 #define CALCULATOR_H
 
-#include "util/Base.h"
-#include "util/Parameter.h"
+#include "../util/Base.h"
+#include "../util/Parameter.h"
 
 namespace Calculator {
 
@@ -78,6 +78,42 @@ namespace Calculator {
                 result_row[j] = inner_product(A_row, B_row, A_col_num);
             }
         }
+    }
+
+    /**
+     * Compute the product of two matrices AB using Intel MKL
+     * @param A
+     * @param B
+     * @param result: the space of result matrix should be allocated in advance
+     * @param A_row_num
+     * @param A_col_num
+     * @param B_row_num
+     * @param B_col_num
+     * @return
+     */
+    inline void matrix_product_mkl(double *A, double *B, double *result, const int A_row_num, const int A_col_num,
+                                   const int B_row_num, const int B_col_num) {
+        cblas_xgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                    A_row_num, B_col_num, A_col_num, 1.0, &A[0], A_col_num, &B[0], B_col_num, 0.0, result, B_col_num);
+    }
+
+
+    /**
+     * Compute the product of two matrices AB_T using Intel MKL
+     * @param A
+     * @param B
+     * @param result: the space of result matrix should be allocated in advance
+     * @param A_row_num
+     * @param A_col_num
+     * @param B_row_num
+     * @param B_col_num
+     * @return
+     */
+    inline void matrix_product_transpose_mkl(double *A, double *B, double *result, const int A_row_num, const int A_col_num,
+                                             const int B_row_num, const int B_col_num) {
+        cblas_xgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
+                    A_row_num, B_row_num, A_col_num, 1.0, &A[0], A_col_num, &B[0], A_col_num, 0.0, result, B_row_num);
+
     }
 
     inline value_type cal_rescal_score(const int rel_id, const int sub_id, const int obj_id, value_type *A,

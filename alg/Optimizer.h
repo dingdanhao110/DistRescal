@@ -5,8 +5,8 @@
 #ifndef DISTRESCAL_OPTIMIZER_H
 #define DISTRESCAL_OPTIMIZER_H
 
-#include "util/Base.h"
-#include "util/Parameter.h"
+#include "../util/Base.h"
+#include "../util/Parameter.h"
 /**
  * Stochastic Gradient Descent
  * @param factors

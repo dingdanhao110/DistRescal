@@ -1,11 +1,11 @@
 #ifndef MARGINBASEDOPTIMIZER_H
 #define MARGINBASEDOPTIMIZER_H
 
-#include "alg/Sampler.h"
-#include "util/Base.h"
-#include "util/Parameter.h"
-#include "util/Data.h"
-#include "util/Monitor.h"
+#include "../alg/Sampler.h"
+#include "../util/Base.h"
+#include "../util/Parameter.h"
+#include "../util/Data.h"
+#include "../util/Monitor.h"
 
 /**
  * Stochastic Gradient Descent

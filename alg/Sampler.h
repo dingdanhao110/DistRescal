@@ -1,12 +1,12 @@
 #ifndef SAMPLER_H
 #define SAMPLER_H
 
-#include "util/Parameter.h"
-#include "util/Base.h"
-#include "struct/Tuple.h"
-#include "util/RandomUtil.h"
-#include "util/Data.h"
-#include "util/Calculator.h"
+#include "../util/Parameter.h"
+#include "../util/Base.h"
+#include "../struct/Tuple.h"
+#include "../util/RandomUtil.h"
+#include "../util/Data.h"
+#include "../util/Calculator.h"
 
 using namespace Calculator;
 

@@ -1,10 +1,10 @@
 #ifndef DATA_H
 #define DATA_H
 
-#include "util/Base.h"
-#include "struct/Tuple.h"
-#include "struct/Triple.h"
-#include "util/FileUtil.h"
+#include "Base.h"
+#include "../struct/Tuple.h"
+#include "../struct/Triple.h"
+#include "FileUtil.h"
 
 using namespace FileUtil;
 

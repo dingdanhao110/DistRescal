@@ -17,6 +17,8 @@
 #include <string>
 #include <mutex>
 #include <chrono>
+#include <mkl.h>
+#include <mkl_vml.h>
 
 using std::cout;
 using std::cerr;
@@ -43,7 +45,7 @@ using std::to_string;
 
 namespace po = boost::program_options;
 
-#include "../../extern/boost/threadpool.hpp"
+#include "../extern/boost/threadpool.hpp"
 using namespace boost::threadpool;
 
 ////////////////// Boost //////////////////////
@@ -51,7 +53,15 @@ using namespace boost::threadpool;
 ////////////////// Types //////////////////////
 typedef unsigned long long ull;
 
-typedef double value_type;
+#define use_double
+
+#ifdef use_double
+    typedef double value_type;
+    #define cblas_xgemm cblas_dgemm
+#else
+    typedef float value_type;
+    #define cblas_xgemm cblas_sgemm
+#endif
 
 ////////////////// Types //////////////////////
 

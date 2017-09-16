@@ -1,16 +1,16 @@
 #ifndef RESCAL_NAIVE_H
 #define RESCAL_NAIVE_H
 
-#include "util/Base.h"
-#include "util/RandomUtil.h"
-#include "util/Monitor.h"
-#include "util/FileUtil.h"
-#include "util/CompareUtil.h"
-#include "util/EvaluationUtil.h"
-#include "util/Data.h"
-#include "util/Calculator.h"
-#include "util/Parameter.h"
-#include "alg/MarginBasedOptimizer.h"
+#include "../util/Base.h"
+#include "../util/RandomUtil.h"
+#include "../util/Monitor.h"
+#include "../util/FileUtil.h"
+#include "../util/CompareUtil.h"
+#include "../util/EvaluationUtil.h"
+#include "../util/Data.h"
+#include "../util/Calculator.h"
+#include "../util/Parameter.h"
+#include "../alg/MarginBasedOptimizer.h"
 
 using namespace EvaluationUtil;
 using namespace FileUtil;

@@ -17,29 +17,37 @@ if(Boost_FOUND)
     link_libraries(${Boost_LIBRARIES})
 endif(Boost_FOUND)
 
-## set include directory
-include_directories(include)
-include_directories(extern)
+## look for MKL
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/extern/cmake/")
+find_package(MKL REQUIRED)
+if(MKL_FOUND)
+    message(STATUS "MKL found " ${MKL_INCLUDE_DIRS})
+    include_directories(${MKL_INCLUDE_DIRS})
+    link_directories(${MKL_LIBRARIES})
+endif()
 
-## define lib library
-set(lib_SRCS)
-set(lib_HDRS
-   include/util/Monitor.h
-   include/util/EvaluationUtil.h
-   include/util/Data.h
-   include/util/Base.h
-   include/util/FileUtil.h
-   include/util/Monitor.h
-   include/util/RandomUtil.h
-   include/util/CompareUtil.h
-   include/util/Calculator.h
-   include/util/Parameter.h
-   include/struct/Triple.h
-   include/struct/Tuple.h
-   include/alg/Sampler.h
-   include/alg/RESCAL_NAIVE.h
-   include/alg/MarginBasedOptimizer.h
-        include/alg/RESCAL_LOCK.h include/alg/Optimizer.h)
+set(alg
+    alg/Sampler.h
+    alg/RESCAL_NAIVE.h
+    alg/MarginBasedOptimizer.h
+    alg/RESCAL_LOCK.h
+    alg/Optimizer.h)
+
+set(util
+    util/Monitor.h
+    util/EvaluationUtil.h
+    util/Data.h
+    util/Base.h
+    util/FileUtil.h
+    util/Monitor.h
+    util/RandomUtil.h
+    util/CompareUtil.h
+    util/Calculator.h
+    util/Parameter.h)
+
+set(struct
+    struct/Triple.h
+    struct/Tuple.h)
 
 set(threadpool
     extern/boost/threadpool.hpp)
@@ -47,17 +55,12 @@ set(threadpool
 add_library(lib SHARED ${lib_HDRS} ${lib_SRCS} ${threadpool})
 set_target_properties(lib PROPERTIES LINKER_LANGUAGE CXX)
 
+add_library(DistRESCAL SHARED ${alg} ${util} ${struct} ${threadpool})
+set_target_properties(DistRESCAL PROPERTIES LINKER_LANGUAGE CXX)
+link_libraries(DistRESCAL ${Boost_LIBRARIES} ${MKL_LIBRARIES})
+
 add_executable(testThreadPool src/testThreadPool.cpp)
-target_link_libraries(testThreadPool lib)
-target_link_libraries(testThreadPool ${Boost_LIBRARIES})
+add_executable(testMatrixProduct src/testMatrixProduct.cpp)
 
 add_executable(runRESCAL_NAIVE src/runRESCAL_NAIVE.cpp)
-target_link_libraries(runRESCAL_NAIVE lib)
-target_link_libraries(runRESCAL_NAIVE ${Boost_LIBRARIES})
-
 add_executable(runRESCAL_LOCK src/runRESCAL_LOCK.cpp)
-target_link_libraries(runRESCAL_LOCK lib)
-target_link_libraries(runRESCAL_LOCK ${Boost_LIBRARIES})
-
-add_executable(testMatrixProduct src/testMatrixProduct.cpp)
-target_link_libraries(testMatrixProduct lib)
