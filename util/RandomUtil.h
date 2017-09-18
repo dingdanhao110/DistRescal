@@ -53,5 +53,13 @@ namespace RandomUtil {
         return distribution(*generator);
     }
 
+    inline int randint_multithreaded(const int min, const int max, std::mt19937 *generator) {
+        if (!generator) {
+            generator = new std::mt19937(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
+        }
+        std::uniform_int_distribution<int> distribution(min, max - 1);
+        return distribution(*generator);
+    }
+
 };
 #endif //RANDOMUTIL_H

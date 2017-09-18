@@ -31,7 +31,8 @@ set(alg
     alg/RESCAL_NAIVE.h
     alg/MarginBasedOptimizer.h
     alg/RESCAL_LOCK.h
-    alg/Optimizer.h)
+    alg/RESCAL_NOLOCK.h
+    alg/Optimizer.h alg/RESCAL_NOLOCK.h)
 
 set(util
     util/Monitor.h
@@ -47,7 +48,7 @@ set(util
 
 set(struct
     struct/Triple.h
-    struct/Tuple.h)
+    struct/Tuple.h struct/Sample.h)
 
 set(threadpool
     extern/boost/threadpool.hpp)
@@ -64,3 +65,4 @@ add_executable(testMatrixProduct src/testMatrixProduct.cpp)
 
 add_executable(runRESCAL_NAIVE src/runRESCAL_NAIVE.cpp)
 add_executable(runRESCAL_LOCK src/runRESCAL_LOCK.cpp)
+#add_executable(runRESCAL_NOLOCK src/runRESCAL_NOLOCK.cpp)
