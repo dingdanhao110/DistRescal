@@ -182,19 +182,42 @@ protected:
     }
 
     void update(const Sample &sample) {
-        //cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
-        std::unique_lock<std::mutex> lock5(R_locks[sample.relation_id], std::defer_lock);
-        std::unique_lock<std::mutex> lock1(A_locks[sample.p_obj], std::defer_lock);
-        std::unique_lock<std::mutex> lock3(A_locks[sample.p_sub], std::defer_lock);
-        if (sample.p_sub != sample.n_sub) {
-            std::unique_lock<std::mutex> lock2(A_locks[sample.n_sub], std::defer_lock);
-            std::lock(lock1, lock2, lock3, lock5);
+        cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
+
+        set<int> to_lock;
+        to_lock.insert(sample.p_obj);
+        to_lock.insert(sample.p_sub);
+        to_lock.insert(sample.n_obj);
+        to_lock.insert(sample.n_sub);
+
+        vector<std::unique_lock<std::mutex>> locks;
+        for(auto l:to_lock) {
+            locks.emplace_back(A_locks[l], std::defer_lock);
         }
-        else //sample.p_obj != sample.n_obj
+        locks.emplace_back(R_locks[sample.relation_id],std::defer_lock);
+        switch (locks.size())
         {
-            std::unique_lock<std::mutex> lock4(A_locks[sample.n_obj], std::defer_lock);
-            std::lock(lock1, lock4, lock3, lock5);
+            case 0:
+                break;
+            case 1:
+                locks.front().lock();
+                break;
+            case 2:
+                std::lock(locks[0], locks[1]);
+                break;
+            case 3:
+                std::lock(locks[0], locks[1], locks[2]);
+                break;
+            case 4:
+                std::lock(locks[0], locks[1], locks[2], locks[3]);
+                break;
+            case 5:
+                std::lock(locks[0], locks[1], locks[2], locks[3], locks[4]);
+                break;
+            default:
+                throw "oops";
         }
+
 
         //cout<<"Thread "<<std::this_thread::get_id()<<": lock set!"<<endl;
 

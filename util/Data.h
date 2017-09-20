@@ -213,10 +213,42 @@ private:
         pair<int, int> sub_rel_pair;
         pair<int, int> obj_rel_pair;
 
+        set<string> relation_counter;
+        set<string> entity_counter;
+        for (Triple<string> triple_str : training_triple_strs) {
+
+            if (relation_counter.find(triple_str.relation) == relation_counter.end()) {
+                relation_counter.insert(triple_str.relation);
+            }
+            if (entity_counter.find(triple_str.subject) == entity_counter.end()) {
+                entity_counter.insert(triple_str.subject);
+            }
+            if (entity_counter.find(triple_str.object) == entity_counter.end()) {
+                entity_counter.insert(triple_str.object);
+            }
+        }
+
+        std::vector<int> rel2newid(relation_counter.size());
+        std::iota(std::begin(rel2newid), std::end(rel2newid), 0);
+        std::random_shuffle(rel2newid.begin(), rel2newid.end());
+//        std::vector<int> newid2rel(relation_counter.size());
+//        for(int i=0;i<relation_counter.size();++i){
+//            newid2rel[rel2newid[i]]=i;
+//        }
+
+        std::vector<int> entity2newid(entity_counter.size());
+        std::iota(std::begin(entity2newid), std::end(entity2newid), 0);
+        std::random_shuffle(entity2newid.begin(), entity2newid.end());
+//        std::vector<int> newid2entity(entity_counter.size());
+//        for(int i=0;i<entity_counter.size();++i){
+//            newid2entity[entity2newid[i]]=i;
+//        }
+
+        //Original code starts from here..
         for (Triple<string> triple_str : training_triple_strs) {
 
             if (relation_encoder.find(triple_str.relation) == relation_encoder.end()) {
-                relation_id = relation_encoder.size();
+                relation_id = rel2newid[relation_encoder.size()];
                 relation_encoder[triple_str.relation] = relation_id;
                 relation_decoder[relation_id] = triple_str.relation;
             } else {
@@ -224,7 +256,7 @@ private:
             }
 
             if (entity_encoder.find(triple_str.subject) == entity_encoder.end()) {
-                subject_id = entity_encoder.size();
+                subject_id = entity2newid[entity_encoder.size()];
                 entity_encoder[triple_str.subject] = subject_id;
                 entity_decoder[subject_id] = triple_str.subject;
             } else {
@@ -232,7 +264,7 @@ private:
             }
 
             if (entity_encoder.find(triple_str.object) == entity_encoder.end()) {
-                object_id = entity_encoder.size();
+                object_id = entity2newid[entity_encoder.size()];
                 entity_encoder[triple_str.object] = object_id;
                 entity_decoder[object_id] = triple_str.object;
             } else {

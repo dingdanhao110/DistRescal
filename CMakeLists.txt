@@ -65,4 +65,4 @@ add_executable(testMatrixProduct src/testMatrixProduct.cpp)
 
 add_executable(runRESCAL_NAIVE src/runRESCAL_NAIVE.cpp)
 add_executable(runRESCAL_LOCK src/runRESCAL_LOCK.cpp)
-#add_executable(runRESCAL_NOLOCK src/runRESCAL_NOLOCK.cpp)
+add_executable(runRESCAL_NOLOCK src/runRESCAL_NOLOCK.cpp)
