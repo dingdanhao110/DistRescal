@@ -15,6 +15,7 @@
 #include "../util/Calculator.h"
 #include "../util/Parameter.h"
 #include "../alg/Optimizer.h"
+#include "../struct/Bucket.h"
 
 using namespace EvaluationUtil;
 using namespace FileUtil;
@@ -48,9 +49,9 @@ public:
         value_type total_time = 0.0;
 
         for (int epoch = current_epoch; epoch <= parameter->epoch; epoch++) {
-
             //Sample all training data
             timer.start();
+            Bucket_assigner bucket_assigner(parameter->num_of_thread);
             vector<Sample> training_samples(0);
             training_samples.reserve(data->num_of_training_triples);
             std::mutex mutex1;
@@ -70,11 +71,13 @@ public:
                         }
                         //cout<<"Thread "<<std::this_thread::get_id()<<": Work assigned"<<endl;
                         //update(sample);
-                        //TODO: Collect samples...
-                        std::lock_guard<std::mutex> lock(mutex1);
-                        training_samples.push_back(std::move(sample));
+                        {
+                            //TODO: Collect samples...
+                            std::lock_guard<std::mutex> lock(mutex1);
+                            training_samples.push_back(sample);
+                            bucket_assigner.assign(sample);
+                        }
                     }
-
                 }, thread_index));
             }
 
@@ -86,24 +89,37 @@ public:
             cout << "------------------------" << endl;
             cout << "epoch " << epoch<<", sampling time "<<timer.getElapsedTime()<< " secs" << endl;
 
+            //TODO: partition samples into num_of_thread buckets!!!
+            cout << "Bucket distribution: free count:"<<bucket_assigner.get_free_count()<<endl;
+            cout<<"Samples in each bucket: ";
+            for(auto& b:bucket_assigner.get_buckets()){
+                cout<<b.size()<<" ";
+            }
+            cout<<endl;
+            cout<<"Entities in each bucket: ";
+            for(auto& b:bucket_assigner.get_buckets()){
+                cout<<b.entity_count()<<" ";
+            }
+            cout<<endl;
+
             //allocate samples and update in parallel
             violations = 0;
             loss = 0;
             timer.start();
 
-            for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
-
-                computation_thread_pool->schedule(std::bind([&](const int thread_index) {
-                    //TODO: Allocate samples...
-
-                    //TODO: Call update functions
-
-
-
-                }, thread_index));
-            }
-
-            computation_thread_pool->wait();
+//            for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
+//
+//                computation_thread_pool->schedule(std::bind([&](const int thread_index) {
+//                    //TODO: Allocate samples from each bucket
+//
+//                    //TODO: Call update functions
+//
+//
+//
+//                }, thread_index));
+//            }
+//
+//            computation_thread_pool->wait();
 
             timer.stop();
 

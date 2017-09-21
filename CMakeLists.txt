@@ -48,7 +48,7 @@ set(util
 
 set(struct
     struct/Triple.h
-    struct/Tuple.h struct/Sample.h)
+    struct/Tuple.h struct/Sample.h struct/Bucket.h)
 
 set(threadpool
     extern/boost/threadpool.hpp)
