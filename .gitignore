@@ -30,3 +30,8 @@
 *.exe
 *.out
 *.app
+.vs/DistRescal/v15/.suo
+.vs/DistRescal/v15/Browse.VC.db
+.vs/ProjectSettings.json
+.vs/slnx.sqlite
+.vs/VSWorkspaceState.json
