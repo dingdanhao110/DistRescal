@@ -99,23 +99,34 @@ public:
             loss = 0;
             timer.start();
 
-            while (computation_thread_pool->active()<parameter->num_of_thread){
-                if(!scheduler.finished()) {
-                    computation_thread_pool->schedule([&]() {
-                        //Fetch samples from scheduler
-                        array<int,3> block;
-                        set<int> samples;
-                        scheduler.schedule_next(block,samples);
-
+            //TODO: Fix the logic... Should sleep until one thread finishes..
+            while (true){
+                computation_thread_pool->wait(parameter->num_of_thread-1);
+                if(scheduler.finished())break;
+                array<int,3> block;
+                set<int>to_update;
+                {
+                    std::lock_guard<std::mutex> l(mutex_scheduler);
+                    scheduler.schedule_next(block, to_update);
+                }
+                if(to_update.size())
+                {
+                    computation_thread_pool->schedule(std::bind([&](set<int>& to_update) {
+                        cerr<<"Thread "<<std::this_thread::get_id()<<": Work assigned!\n";
                         //Call update functions
-                        for (auto &sample:samples) {
+                        for (auto &sample:to_update) {
                             update(training_samples[sample]);
                         }
                         {
-                            std::lock_guard(mutex_scheduler);
+                            std::lock_guard<std::mutex>l(mutex_scheduler);
                             scheduler.report_finish(block);
                         }
-                    });
+                        cerr<<"Thread "<<std::this_thread::get_id()<<": Work done!\n";
+                    },to_update));
+                }
+                else{
+                    cerr<<"Main thread slept! Current count: "<<scheduler.count<<" "<<violations<<endl;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 }
             }
 
