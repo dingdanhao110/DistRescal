@@ -62,6 +62,7 @@ link_libraries(DistRESCAL ${Boost_LIBRARIES} ${MKL_LIBRARIES})
 
 add_executable(testThreadPool src/testThreadPool.cpp)
 add_executable(testMatrixProduct src/testMatrixProduct.cpp)
+add_executable(testScheduler src/testScheduler.cpp)
 
 add_executable(runRESCAL_NAIVE src/runRESCAL_NAIVE.cpp)
 add_executable(runRESCAL_LOCK src/runRESCAL_LOCK.cpp)

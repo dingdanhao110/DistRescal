@@ -6,6 +6,7 @@
 #define DISTRESCAL_BLOCK_H
 
 #include "../util/Base.h"
+#include "Sample.h"
 
 struct Block {
     bool scheduled;
@@ -70,28 +71,28 @@ public:
 
     void schedule_next(array<int, 3> &block, set<int> &samples) {
         //TODO: Fix the scheduler!!!!!!!
-        //randomly select 3 segment of entities
+        samples.clear();
         vector<int> candidates;
         for (int i = 0; i < lock_status.size(); ++i) {
             if (!lock_status[i]) {
                 candidates.push_back(i);
             }
         }
-        //TODO: check whether randomness is needed..
-//        std::random_shuffle(candidates.begin(), candidates.end());
+
         if (candidates.size() >= 3) {
-
             //lock entities
-            int a = candidates[0];
-            int b = candidates[1];
-            int c = candidates[2];
-            if (!blocks[a][b][c].scheduled) {
+            std::random_shuffle(candidates.begin(),candidates.end());
+            do {
+                int a = candidates[candidates.size()-1];
+                int b = candidates[candidates.size()-2];
+                int c = candidates[candidates.size()-3];
                 block[0] = a;
                 block[1] = b;
                 block[2] = c;
-                lock_status[candidates[0]] = 1;
-                lock_status[candidates[1]] = 1;
-                lock_status[candidates[2]] = 1;
+                if (blocks[a][b][c].scheduled){continue;}
+                lock_status[a] = 1;
+                lock_status[b] = 1;
+                lock_status[c] = 1;
                 //mark blocks as scheduled, add to samples, and count
                 {
                     array<int, 3> e = {a, b, c};
@@ -101,14 +102,14 @@ public:
                     } while (std::next_permutation(e.begin(), e.begin() + 3));
                 }
                 {
-                    array<int, 3> e = {a, b, a};
+                    array<int, 3> e = {a, a, b};
                     std::sort(e.begin(), e.end());
                     do {
                         add_sample(samples, e[0], e[1], e[2]);
                     } while (std::next_permutation(e.begin(), e.begin() + 3));
                 }
                 {
-                    array<int, 3> e = {a, c, a};
+                    array<int, 3> e = {a, a, c};
                     std::sort(e.begin(), e.end());
                     do {
                         add_sample(samples, e[0], e[1], e[2]);
@@ -148,134 +149,20 @@ public:
                 add_sample(samples, c, c, c);
 
                 if (!samples.size()) {
-                    this->report_finish(block);
+                    lock_status[a] = 0;
+                    lock_status[b] = 0;
+                    lock_status[c] = 0;
                 } else {
                     return;
                 }
-            }
+                //cerr<<"One empty draw\n";
+            } while (std::next_permutation(candidates.begin(), candidates.end()));
 
-
-            while (std::next_permutation(candidates.begin(), candidates.end())) {
-                //needs to fetch another block..By permutation..
-                int a = candidates[0];
-                int b = candidates[1];
-                int c = candidates[2];
-                if (blocks[a][b][c].scheduled) { continue; }
-                block[0] = a;
-                block[1] = b;
-                block[2] = c;
-                lock_status[candidates[0]] = 1;
-                lock_status[candidates[1]] = 1;
-                lock_status[candidates[2]] = 1;
-                //mark blocks as scheduled, add to samples, and count
-                {
-                    array<int, 3> e = {a, b, c};
-                    std::sort(e.begin(), e.end());
-                    do {
-                        add_sample(samples, e[0], e[1], e[2]);
-                    } while (std::next_permutation(e.begin(), e.begin() + 3));
-                }
-                {
-                    array<int, 3> e = {a, b, a};
-                    std::sort(e.begin(), e.end());
-                    do {
-                        add_sample(samples, e[0], e[1], e[2]);
-                    } while (std::next_permutation(e.begin(), e.begin() + 3));
-                }
-                {
-                    array<int, 3> e = {a, c, a};
-                    std::sort(e.begin(), e.end());
-                    do {
-                        add_sample(samples, e[0], e[1], e[2]);
-                    } while (std::next_permutation(e.begin(), e.begin() + 3));
-                }
-                {
-                    array<int, 3> e = {a, b, b};
-                    std::sort(e.begin(), e.end());
-                    do {
-                        add_sample(samples, e[0], e[1], e[2]);
-                    } while (std::next_permutation(e.begin(), e.begin() + 3));
-                }
-                {
-                    array<int, 3> e = {c, b, b};
-                    std::sort(e.begin(), e.end());
-                    do {
-                        add_sample(samples, e[0], e[1], e[2]);
-                    } while (std::next_permutation(e.begin(), e.begin() + 3));
-                }
-                {
-                    array<int, 3> e = {a, c, c};
-                    std::sort(e.begin(), e.end());
-                    do {
-                        add_sample(samples, e[0], e[1], e[2]);
-                    } while (std::next_permutation(e.begin(), e.begin() + 3));
-                }
-                {
-                    array<int, 3> e = {b, c, c};
-                    std::sort(e.begin(), e.end());
-                    do {
-                        add_sample(samples, e[0], e[1], e[2]);
-                    } while (std::next_permutation(e.begin(), e.begin() + 3));
-                }
-
-                add_sample(samples, a, a, a);
-                add_sample(samples, b, b, b);
-                add_sample(samples, c, c, c);
-                if (!samples.size()) {
-                    this->report_finish(block);
-                } else {
-                    return;
-                }
-            }
-
-        }
-        if (candidates.size() == 2) {
-            int a = candidates[0];
-            int b = candidates[1];
-            block[0] = a;
-            block[1] = b;
-            block[2] = -1;
-            lock_status[candidates[0]] = 1;
-            lock_status[candidates[1]] = 1;
-            {
-                array<int, 3> e = {a, b, b};
-                std::sort(e.begin(), e.end());
-                do {
-                    add_sample(samples, e[0], e[1], e[2]);
-                } while (std::next_permutation(e.begin(), e.begin() + 3));
-            }
-            {
-                array<int, 3> e = {a, a, b};
-                std::sort(e.begin(), e.end());
-                do {
-                    add_sample(samples, e[0], e[1], e[2]);
-                } while (std::next_permutation(e.begin(), e.begin() + 3));
-            }
-            add_sample(samples, a, a, a);
-            add_sample(samples, b, b, b);
-            if (!samples.size()) {
-                this->report_finish(block);
-            } else {
-                return;
-            }
-        }
-        if (candidates.size() == 1) {
-            int a = candidates[0];
-            block[0] = a;
-            block[1] = -1;
-            block[2] = -1;
-            lock_status[candidates[0]] = 1;
-            add_sample(samples, a, a, a);
-            if (!samples.size()) {
-                this->report_finish(block);
-            } else {
-                return;
-            }
-        }
-        if (candidates.size() == 0) {
+        } else {
             //should never go here
             block[0] = block[1] = block[2] = -1;
-            return;
+            cerr << "too few candidate piece of A\n";
+            exit(-1);
         }
     }
 
