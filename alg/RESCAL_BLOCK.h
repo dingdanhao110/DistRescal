@@ -16,7 +16,7 @@
 #include "../util/Parameter.h"
 #include "../alg/Optimizer.h"
 #include "../struct/Bucket.h"
-#include "../struct/Scheduler.h"
+#include "../struct/Scheduler2.h"
 
 using namespace EvaluationUtil;
 using namespace FileUtil;
@@ -53,7 +53,7 @@ public:
             //Sample all training data
             timer.start();
             //Bucket_assigner bucket_assigner(parameter->num_of_thread);
-            Scheduler scheduler(parameter->num_of_thread*3+3,block_size);
+            Scheduler2 scheduler(parameter->num_of_thread*3+3,block_size);
             vector<Sample> training_samples(0);
             training_samples.reserve(data->num_of_training_triples);
             std::mutex mutex_scheduler;
@@ -125,7 +125,7 @@ public:
                     },to_update));
                 }
                 else{
-                    cerr<<"Main thread slept! Current count: "<<scheduler.count<<" "<<violations<<endl;
+                    cerr << "Pending blocks: " << scheduler.pending_blocks.size() << endl;
                     std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 }
             }

@@ -93,61 +93,15 @@ public:
                 lock_status[a] = 1;
                 lock_status[b] = 1;
                 lock_status[c] = 1;
+                array<int,3> e={a,b,c};
                 //mark blocks as scheduled, add to samples, and count
-                {
-                    array<int, 3> e = {a, b, c};
-                    std::sort(e.begin(), e.end());
-                    do {
-                        add_sample(samples, e[0], e[1], e[2]);
-                    } while (std::next_permutation(e.begin(), e.begin() + 3));
+                for(int i:e) {
+                    for (int j:e) {
+                        for (int k:e) {
+                            add_sample(samples, i, j, k);
+                        }
+                    }
                 }
-                {
-                    array<int, 3> e = {a, a, b};
-                    std::sort(e.begin(), e.end());
-                    do {
-                        add_sample(samples, e[0], e[1], e[2]);
-                    } while (std::next_permutation(e.begin(), e.begin() + 3));
-                }
-                {
-                    array<int, 3> e = {a, a, c};
-                    std::sort(e.begin(), e.end());
-                    do {
-                        add_sample(samples, e[0], e[1], e[2]);
-                    } while (std::next_permutation(e.begin(), e.begin() + 3));
-                }
-                {
-                    array<int, 3> e = {a, b, b};
-                    std::sort(e.begin(), e.end());
-                    do {
-                        add_sample(samples, e[0], e[1], e[2]);
-                    } while (std::next_permutation(e.begin(), e.begin() + 3));
-                }
-                {
-                    array<int, 3> e = {c, b, b};
-                    std::sort(e.begin(), e.end());
-                    do {
-                        add_sample(samples, e[0], e[1], e[2]);
-                    } while (std::next_permutation(e.begin(), e.begin() + 3));
-                }
-                {
-                    array<int, 3> e = {a, c, c};
-                    std::sort(e.begin(), e.end());
-                    do {
-                        add_sample(samples, e[0], e[1], e[2]);
-                    } while (std::next_permutation(e.begin(), e.begin() + 3));
-                }
-                {
-                    array<int, 3> e = {b, c, c};
-                    std::sort(e.begin(), e.end());
-                    do {
-                        add_sample(samples, e[0], e[1], e[2]);
-                    } while (std::next_permutation(e.begin(), e.begin() + 3));
-                }
-
-                add_sample(samples, a, a, a);
-                add_sample(samples, b, b, b);
-                add_sample(samples, c, c, c);
-
                 if (!samples.size()) {
                     lock_status[a] = 0;
                     lock_status[b] = 0;
