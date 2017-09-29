@@ -67,7 +67,6 @@ public:
     }
 
     inline void report_finish(array<int, 3> &block) {
-        //TODO:release lock for blocks
         for (int i:block) {
             if (i >= 0)
                 lock_status[i] = 0;
@@ -75,9 +74,12 @@ public:
     }
 
     void schedule_next(array<int, 3> &block, set<int> &samples) {
+        //cout<<"schedule\n";
         //TODO: Fix the scheduler!!!!!!!
         samples.clear();
+        block={-1,-1,-1};
         set<int> l;
+        vector<int> to_delete;
         //lock entities
         //TODO: Draw block from set:pending
         for (int id:pending_blocks) {
@@ -92,11 +94,15 @@ public:
             if (tmp.size() > 3) { continue; }
             l = std::move(tmp);
 
-            if (pending_blocks.find(block2id(a, b, c)) != pending_blocks.end())
-                pending_blocks.erase(block2id(a, b, c));
+            to_delete.push_back(id);
+            add_sample(samples,a,b,c);
 
         }
+        for(int i:to_delete){
+            pending_blocks.erase(i);
+        }
 
+        //cout<<"!schedule\n";
         if (samples.size()) {
             vector<int> t(l.begin(), l.end());
             switch (t.size()) {
@@ -114,9 +120,11 @@ public:
                     cerr << "Should not come here!\n";
                     exit(-1);
             }
+            //cout<<"~schedule\n";
             return;
         }
         //cerr<<"One empty draw\n";
+        //cout<<"~schedule\n";
     }
 
 

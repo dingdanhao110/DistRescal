@@ -99,7 +99,7 @@ public:
             loss = 0;
             timer.start();
 
-            //TODO: Fix the logic... Should sleep until one thread finishes..
+            //Sleep until one thread finishes..
             while (true){
                 computation_thread_pool->wait(parameter->num_of_thread-1);
                 if(scheduler.finished())break;
@@ -111,7 +111,7 @@ public:
                 }
                 if(to_update.size())
                 {
-                    computation_thread_pool->schedule(std::bind([&](set<int>& to_update) {
+                    computation_thread_pool->schedule(std::bind([&](set<int> to_update) {
                         cerr<<"Thread "<<std::this_thread::get_id()<<": Work assigned!\n";
                         //Call update functions
                         for (auto &sample:to_update) {
@@ -126,6 +126,8 @@ public:
                 }
                 else{
                     cerr << "Pending blocks: " << scheduler.pending_blocks.size() << endl;
+                    cerr << "Active threads: " << computation_thread_pool->active() << endl;
+                    cerr << "Violations: " << violations << endl;
                     std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 }
             }
