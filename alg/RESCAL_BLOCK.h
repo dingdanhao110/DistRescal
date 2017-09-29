@@ -100,9 +100,8 @@ public:
             timer.start();
 
             //Sleep until one thread finishes..
-            while (true){
+            while (!scheduler.finished()){
                 computation_thread_pool->wait(parameter->num_of_thread-1);
-                if(scheduler.finished())break;
                 array<int,3> block;
                 set<int>to_update;
                 {
@@ -122,7 +121,7 @@ public:
                             scheduler.report_finish(block);
                         }
                         cerr<<"Thread "<<std::this_thread::get_id()<<": Work done!\n";
-                    },to_update));
+                    },move(to_update)));
                 }
                 else{
                     cerr << "Pending blocks: " << scheduler.pending_blocks.size() << endl;
