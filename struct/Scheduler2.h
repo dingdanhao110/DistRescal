@@ -16,7 +16,7 @@ struct Block {
 };
 
 class Scheduler2 {
-private:
+public:
     int num_of_blocks;
     int block_size;
     vector<bool> lock_status;
@@ -29,10 +29,8 @@ private:
         b = (id / num_of_blocks) % num_of_blocks;
         a = ((id / num_of_blocks) / num_of_blocks);
     }
-
-public:
     unordered_set<int> pending_blocks;
-
+public:
     Scheduler2(int nb, int bs) : num_of_blocks(nb), lock_status(nb, 0), block_size(bs),
                                  blocks(num_of_blocks * num_of_blocks * num_of_blocks) {
     }
@@ -73,11 +71,11 @@ public:
         }
     }
 
-    void schedule_next(array<int, 3> &block, set<int> &samples) {
+    void schedule_next(array<int, 3> &locks, set<int> &samples) {
         //cout<<"schedule\n";
         //TODO: Fix the scheduler!!!!!!!
         samples.clear();
-        block={-1,-1,-1};
+        locks={-1,-1,-1};
         set<int> l;
         vector<int> to_delete;
         //lock entities
@@ -85,8 +83,8 @@ public:
         for (int id:pending_blocks) {
             int a, b, c;
             id2block(id, a, b, c);
-            if (lock_status[a] || lock_status[b] || lock_status[c])continue;
-            //if (blocks[block2id(a, b, c)].scheduled) { continue; }
+            if (lock_status[a] || lock_status[b] || lock_status[c])continue;//block is locked by other threads
+
             set<int> tmp(l);
             tmp.insert(a);
             tmp.insert(b);
@@ -96,7 +94,6 @@ public:
 
             to_delete.push_back(id);
             add_sample(samples,a,b,c);
-
         }
         for(int i:to_delete){
             pending_blocks.erase(i);
@@ -105,20 +102,9 @@ public:
         //cout<<"!schedule\n";
         if (samples.size()) {
             vector<int> t(l.begin(), l.end());
-            switch (t.size()) {
-                case 3:
-                    block[2] = t[2];
-                    lock_status[t[2]] = 1;
-                case 2:
-                    block[1] = t[1];
-                    lock_status[t[1]] = 1;
-                case 1:
-                    block[0] = t[0];
-                    lock_status[t[0]] = 1;
-                    break;
-                default:
-                    cerr << "Should not come here!\n";
-                    exit(-1);
+            for(int i=0;i<t.size();++i){
+                locks[i]=t[i];
+                lock_status[t[i]]=1;
             }
             //cout<<"~schedule\n";
             return;

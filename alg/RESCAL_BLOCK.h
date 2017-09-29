@@ -102,31 +102,30 @@ public:
             //Sleep until one thread finishes..
             while (!scheduler.finished()){
                 computation_thread_pool->wait(parameter->num_of_thread-1);
-                array<int,3> block;
+                array<int,3> locks;
                 set<int>to_update;
                 {
                     std::lock_guard<std::mutex> l(mutex_scheduler);
-                    scheduler.schedule_next(block, to_update);
+                    scheduler.schedule_next(locks, to_update);
                 }
                 if(to_update.size())
                 {
-                    computation_thread_pool->schedule(std::bind([&](set<int> to_update) {
-                        cerr<<"Thread "<<std::this_thread::get_id()<<": Work assigned!\n";
+                    computation_thread_pool->schedule(std::bind([&](array<int,3> locks,set<int> to_update) {
+                        //cerr<<"Thread "<<std::this_thread::get_id()<<": Work assigned!\n";
                         //Call update functions
                         for (auto &sample:to_update) {
                             update(training_samples[sample]);
                         }
                         {
                             std::lock_guard<std::mutex>l(mutex_scheduler);
-                            scheduler.report_finish(block);
+                            scheduler.report_finish(locks);
                         }
-                        cerr<<"Thread "<<std::this_thread::get_id()<<": Work done!\n";
-                    },move(to_update)));
+                        //cerr<<"Thread "<<std::this_thread::get_id()<<": Work done!\n";
+                    },move(locks),move(to_update)));
                 }
                 else{
-                    cerr << "Pending blocks: " << scheduler.pending_blocks.size() << endl;
-                    cerr << "Active threads: " << computation_thread_pool->active() << endl;
-                    cerr << "Violations: " << violations << endl;
+                    //cerr << "Pending blocks: " << scheduler.pending_blocks.size() << ", Active threads: " << computation_thread_pool->active() << endl;
+                    //cerr << "Violations: " << violations << endl;
                     std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 }
             }

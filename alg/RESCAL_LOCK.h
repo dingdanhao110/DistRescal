@@ -182,7 +182,7 @@ protected:
     }
 
     void update(const Sample &sample) {
-        cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
+        //cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
 
         set<int> to_lock;
         to_lock.insert(sample.p_obj);

@@ -19,14 +19,14 @@ int main(int argc, char **argv) {
 
     while (!scheduler.finished()) {
         computation_thread_pool->wait(3);
-        array<int, 3> block;
+        array<int, 3> locks;
         set<int> to_update;
         {
             std::lock_guard<std::mutex> lock(mutex_scheduler);
-            scheduler.schedule_next(block, to_update);
+            scheduler.schedule_next(locks, to_update);
         }
         if(to_update.size()) {
-            computation_thread_pool->schedule(std::bind([&](set<int> to_update) {
+            computation_thread_pool->schedule(std::bind([&](array<int,3> locks,set<int> to_update) {
                 cerr<<"Thread "<<std::this_thread::get_id()<<": Work assigned!\n";
                 //Call update functions
                 for (auto &sample:to_update) {
@@ -34,12 +34,19 @@ int main(int argc, char **argv) {
                 }
                 {
                     std::lock_guard<std::mutex>l(mutex_scheduler);
-                    scheduler.report_finish(block);
+                    scheduler.report_finish(locks);
                 }
                 cerr<<"Thread "<<std::this_thread::get_id()<<": Work done!\n";
-            },move(to_update)));
+            },move(locks),move(to_update)));
         }
         else{
+            cerr << "Pending blocks: " << scheduler.pending_blocks.size() << endl;
+            cerr << "Active threads: " << computation_thread_pool->active() << endl;
+            int i=0;
+            for(int l:scheduler.lock_status){
+                i+=l;
+            }
+            cerr << "Current locks: " << i << endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
         cerr << "Pending blocks: " << scheduler.pending_blocks.size() << endl;
