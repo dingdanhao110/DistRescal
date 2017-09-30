@@ -32,7 +32,7 @@ set(alg
     alg/MarginBasedOptimizer.h
     alg/RESCAL_LOCK.h
     alg/RESCAL_NOLOCK.h
-    alg/Optimizer.h alg/RESCAL_NOLOCK.h alg/RESCAL_BLOCK.h)
+    alg/Optimizer.h alg/RESCAL_NOLOCK.h alg/RESCAL_BLOCK.h alg/RESCAL_BATCH.h)
 
 set(util
     util/Monitor.h
@@ -48,7 +48,7 @@ set(util
 
 set(struct
     struct/Triple.h
-    struct/Tuple.h struct/Sample.h struct/Bucket.h struct/Scheduler.h struct/Scheduler2.h)
+    struct/Tuple.h struct/Sample.h struct/Bucket.h struct/Scheduler.h struct/Scheduler2.h struct/Batch.h)
 
 set(threadpool
     extern/boost/threadpool.hpp)
@@ -68,3 +68,4 @@ add_executable(runRESCAL_NAIVE src/runRESCAL_NAIVE.cpp)
 add_executable(runRESCAL_LOCK src/runRESCAL_LOCK.cpp)
 add_executable(runRESCAL_NOLOCK src/runRESCAL_NOLOCK.cpp)
 add_executable(runRESCAL_BLOCK src/runRESCAL_BLOCK.cpp)
+add_executable(runRESCAL_BATCH src/runRESCAL_BATCH.cpp)

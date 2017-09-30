@@ -1,9 +1,9 @@
 //
-// Created by dhding on 9/18/17.
+// Created by dhding on 9/30/17.
 //
 
-#ifndef DISTRESCAL_RESCAL_NOLOCK_H
-#define DISTRESCAL_RESCAL_NOLOCK_H
+#ifndef DISTRESCAL_RESCAL_BATCH_H
+#define DISTRESCAL_RESCAL_BATCH_H
 
 #include "../util/Base.h"
 #include "../util/RandomUtil.h"
@@ -15,7 +15,7 @@
 #include "../util/Calculator.h"
 #include "../util/Parameter.h"
 #include "../alg/Optimizer.h"
-#include "../struct/Bucket.h"
+#include "../struct/Batch.h"
 
 using namespace EvaluationUtil;
 using namespace FileUtil;
@@ -25,7 +25,7 @@ using namespace Calculator;
  * Margin based RESCAL_NOLOCK
  */
 template<typename OptimizerType>
-class RESCAL_NOLOCK {
+class RESCAL_BATCH {
 public:
     /**
      * Start to train
@@ -51,10 +51,11 @@ public:
         for (int epoch = current_epoch; epoch <= parameter->epoch; epoch++) {
             //Sample all training data
             timer.start();
-            Bucket_assigner bucket_assigner(parameter->num_of_thread);
+            //Bucket_assigner bucket_assigner(parameter->num_of_thread);
+            Batch_assigner batch_assigner(parameter->num_of_thread);
             vector<Sample> training_samples(0);
             training_samples.reserve(data->num_of_training_triples);
-            std::mutex mutex1;
+            std::mutex mutex_scheduler;
             std::random_shuffle(indices.begin(), indices.end());
             for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
 
@@ -73,9 +74,9 @@ public:
                         //update(sample);
                         {
                             //TODO: Collect samples...
-                            std::lock_guard<std::mutex> lock(mutex1);
+                            std::lock_guard<std::mutex> lock(mutex_scheduler);
                             training_samples.push_back(sample);
-                            bucket_assigner.assign(sample);
+                            batch_assigner.assign(sample);
                         }
                     }
                 }, thread_index));
@@ -89,23 +90,20 @@ public:
             cout << "------------------------" << endl;
             cout << "epoch " << epoch<<", sampling time "<<timer.getElapsedTime()<< " secs" << endl;
 
-            cout << "Bucket distribution: free count:"<<bucket_assigner.get_free_count()<<endl;
+            int batch=0;
+            cout << "**************" << endl;
+            cout << "Batch: " << batch<<endl;
+            cout << "Bucket distribution: free count:"<<batch_assigner.get_free_count()<<endl;
             cout<<"Samples in each bucket: ";
-            for(auto& b:bucket_assigner.get_buckets()){
+            for(auto& b:batch_assigner.get_buckets()){
                 cout<<b.size()<<" ";
             }
             cout<<endl;
             cout<<"Entities in each bucket: ";
-            for(auto& b:bucket_assigner.get_buckets()){
+            for(auto& b:batch_assigner.get_buckets()){
                 cout<<b.entity_count()<<" ";
             }
             cout<<endl;
-            cout<<"Conflicting Entities: ";
-            for(auto& count:bucket_assigner.cal_conflicts()){
-                cout<<count<<" ";
-            }
-            cout<<endl;
-
             //allocate samples and update in parallel
             violations = 0;
             loss = 0;
@@ -115,12 +113,46 @@ public:
 
                 computation_thread_pool->schedule(std::bind([&](const int thread_index) {
                     //Allocate samples from each bucket
-                    const auto& bucket=bucket_assigner.get_buckets()[thread_index];
+                    const auto& bucket=batch_assigner.get_buckets()[thread_index];
                     //Call update functions
                     for(auto& sample:bucket.get_samples()){
                         update(sample);
                     }
                 }, thread_index));
+            }
+            computation_thread_pool->wait();
+
+            while(!batch_assigner.is_finished()){
+                ++batch;
+                //assign next batch
+                batch_assigner.next_batch();
+
+                cout << "**************" << endl;
+                cout << "Batch: " << batch<<endl;
+                cout << "Bucket distribution: free count:"<<batch_assigner.get_free_count()<<endl;
+                cout<<"Samples in each bucket: ";
+                for(auto& b:batch_assigner.get_buckets()){
+                    cout<<b.size()<<" ";
+                }
+                cout<<endl;
+                cout<<"Entities in each bucket: ";
+                for(auto& b:batch_assigner.get_buckets()){
+                    cout<<b.entity_count()<<" ";
+                }
+                cout<<endl;
+
+                //initiate next round
+                for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
+                    computation_thread_pool->schedule(std::bind([&](const int thread_index) {
+                        //Allocate samples from each bucket
+                        const auto& bucket=batch_assigner.get_buckets()[thread_index];
+                        //Call update functions
+                        for(auto& sample:bucket.get_samples()){
+                            update(sample);
+                        }
+                    }, thread_index));
+                }
+                computation_thread_pool->wait();
             }
 
             computation_thread_pool->wait();
@@ -177,8 +209,7 @@ protected:
     int current_epoch=0;
     int violations=0;
     value_type loss=0;
-    std::mutex* A_locks;
-    std::mutex* R_locks;
+    int block_size;
 
     value_type *rescalA;//DenseMatrix, UNSAFE!
     value_type *rescalR;//vector<DenseMatrix>, UNSAFE!
@@ -424,13 +455,14 @@ protected:
     }
 
 public:
-    explicit RESCAL_NOLOCK<OptimizerType>(Parameter &parameter, Data &data) {
+    explicit RESCAL_BATCH<OptimizerType>(Parameter &parameter, Data &data) {
         this->parameter=&parameter;
         this->data=&data;
         computation_thread_pool = new pool(parameter.num_of_thread);
+        block_size=this->data->num_of_entity/(parameter.num_of_thread*3+3)+1;
     }
 
-    ~RESCAL_NOLOCK() {
+    ~RESCAL_BATCH() {
         delete[] rescalA;
         delete[] rescalR;
         delete[] rescalA_G;
@@ -438,4 +470,4 @@ public:
         delete computation_thread_pool;
     }
 };
-#endif //DISTRESCAL_RESCAL_NOLOCK_H
+#endif //DISTRESCAL_RESCAL_BATCH_H
