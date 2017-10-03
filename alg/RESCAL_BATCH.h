@@ -91,19 +91,19 @@ public:
             cout << "epoch " << epoch<<", sampling time "<<timer.getElapsedTime()<< " secs" << endl;
 
             int batch=0;
-            cout << "**************" << endl;
-            cout << "Batch: " << batch<<endl;
-            cout << "Bucket distribution: free count:"<<batch_assigner.get_free_count()<<endl;
-            cout<<"Samples in each bucket: ";
-            for(auto& b:batch_assigner.get_buckets()){
-                cout<<b.size()<<" ";
-            }
-            cout<<endl;
-            cout<<"Entities in each bucket: ";
-            for(auto& b:batch_assigner.get_buckets()){
-                cout<<b.entity_count()<<" ";
-            }
-            cout<<endl;
+//            cout << "**************" << endl;
+//            cout << "Batch: " << batch<<endl;
+//            cout << "Bucket distribution: free count:"<<batch_assigner.get_free_count()<<endl;
+//            cout<<"Samples in each bucket: ";
+//            for(auto& b:batch_assigner.get_buckets()){
+//                cout<<b.size()<<" ";
+//            }
+//            cout<<endl;
+//            cout<<"Entities in each bucket: ";
+//            for(auto& b:batch_assigner.get_buckets()){
+//                cout<<b.entity_count()<<" ";
+//            }
+//            cout<<endl;
             //allocate samples and update in parallel
             violations = 0;
             loss = 0;
@@ -127,19 +127,19 @@ public:
                 //assign next batch
                 batch_assigner.next_batch();
 
-                cout << "**************" << endl;
-                cout << "Batch: " << batch<<endl;
-                cout << "Bucket distribution: free count:"<<batch_assigner.get_free_count()<<endl;
-                cout<<"Samples in each bucket: ";
-                for(auto& b:batch_assigner.get_buckets()){
-                    cout<<b.size()<<" ";
-                }
-                cout<<endl;
-                cout<<"Entities in each bucket: ";
-                for(auto& b:batch_assigner.get_buckets()){
-                    cout<<b.entity_count()<<" ";
-                }
-                cout<<endl;
+//                cout << "**************" << endl;
+//                cout << "Batch: " << batch<<endl;
+//                cout << "Bucket distribution: free count:"<<batch_assigner.get_free_count()<<endl;
+//                cout<<"Samples in each bucket: ";
+//                for(auto& b:batch_assigner.get_buckets()){
+//                    cout<<b.size()<<" ";
+//                }
+//                cout<<endl;
+//                cout<<"Entities in each bucket: ";
+//                for(auto& b:batch_assigner.get_buckets()){
+//                    cout<<b.entity_count()<<" ";
+//                }
+//                cout<<endl;
 
                 //initiate next round
                 for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
@@ -268,9 +268,9 @@ protected:
         if (positive_score - negative_score >= parameter->margin) {
             return;
         }
-
-        violations++;
-
+        if (positive_score - negative_score < parameter->margin) {
+            violations++;
+        }
         //DenseMatrix grad4R(parameter.rescal_D, parameter.rescal_D);
         value_type *grad4R = new value_type[parameter->dimension * parameter->dimension];
         unordered_map<int, value_type *> grad4A_map;

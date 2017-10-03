@@ -87,7 +87,9 @@ protected:
             return;
         }
 
-        violations++;
+        if (positive_score - negative_score < parameter->margin) {
+            violations++;
+        }
 
         //DenseMatrix grad4R(parameter.rescal_D, parameter.rescal_D);
         value_type *grad4R = new value_type[parameter->dimension * parameter->dimension];
