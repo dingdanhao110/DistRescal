@@ -11,6 +11,8 @@
 
 using namespace Calculator;
 
+#define mkl4IPRank
+
 struct hit_rate {
     value_type count_s;
     value_type count_o;
@@ -68,30 +70,32 @@ namespace EvaluationUtil {
         value_type *A = rescalA;
         value_type *Rs = rescalR;
 
+        const int num_of_thread = parameter->num_of_eval_thread;
+        const int hit_rate_topk = parameter->hit_rate_topk;
 
-        pool *eval_thread_pool = new pool(parameter->num_of_thread);
+        Monitor timer;
+
+        pool *eval_thread_pool = new pool(num_of_thread);
 
 #ifdef detailed_eval
-        vector<vector<ull> > rel_counts_s(parameter->num_of_thread, vector<ull>(data->num_of_relation, 0));
-        vector<vector<ull> > rel_counts_o(parameter->num_of_thread, vector<ull>(data->num_of_relation, 0));
+        vector<vector<ull> > rel_counts_s(num_of_thread, vector<ull>(data->num_of_relation, 0));
+        vector<vector<ull> > rel_counts_o(num_of_thread, vector<ull>(data->num_of_relation, 0));
 
-        vector<vector<ull> > rel_counts_s_ranking(parameter->num_of_thread, vector<ull>(data->num_of_relation, 0));
-        vector<vector<ull> > rel_counts_o_ranking(parameter->num_of_thread, vector<ull>(data->num_of_relation, 0));
+        vector<vector<ull> > rel_counts_s_ranking(num_of_thread, vector<ull>(data->num_of_relation, 0));
+        vector<vector<ull> > rel_counts_o_ranking(num_of_thread, vector<ull>(data->num_of_relation, 0));
 
-        vector<vector<value_type> > inv_rel_counts_s_ranking(parameter->num_of_thread, vector<value_type>(data->num_of_relation, 0));
-        vector<vector<value_type> > inv_rel_counts_o_ranking(parameter->num_of_thread, vector<value_type>(data->num_of_relation, 0));
+        vector<vector<value_type> > inv_rel_counts_s_ranking(num_of_thread, vector<value_type>(data->num_of_relation, 0));
+        vector<vector<value_type> > inv_rel_counts_o_ranking(num_of_thread, vector<value_type>(data->num_of_relation, 0));
+
 #endif
-        vector <vector<ull>> rel_counts_s_filtering(parameter->num_of_thread, vector<ull>(data->num_of_relation, 0));
-        vector <vector<ull>> rel_counts_o_filtering(parameter->num_of_thread, vector<ull>(data->num_of_relation, 0));
+        vector<vector<ull> > rel_counts_s_filtering(num_of_thread, vector<ull>(data->num_of_relation, 0));
+        vector<vector<ull> > rel_counts_o_filtering(num_of_thread, vector<ull>(data->num_of_relation, 0));
 
-        vector <vector<ull>> rel_counts_s_ranking_filtering(parameter->num_of_thread, vector<ull>(data->num_of_relation, 0));
-        vector <vector<ull>> rel_counts_o_ranking_filtering(parameter->num_of_thread, vector<ull>(data->num_of_relation, 0));
+        vector<vector<ull> > rel_counts_s_ranking_filtering(num_of_thread, vector<ull>(data->num_of_relation, 0));
+        vector<vector<ull> > rel_counts_o_ranking_filtering(num_of_thread, vector<ull>(data->num_of_relation, 0));
 
-        vector <vector<value_type>> inv_rel_counts_s_ranking_filtering(parameter->num_of_thread,
-                                                                       vector<value_type>(data->num_of_relation, 0));
-        vector <vector<value_type>> inv_rel_counts_o_ranking_filtering(parameter->num_of_thread,
-                                                                       vector<value_type>(data->num_of_relation, 0));
-
+        vector<vector<value_type> > inv_rel_counts_s_ranking_filtering(num_of_thread, vector<value_type>(data->num_of_relation, 0));
+        vector<vector<value_type> > inv_rel_counts_o_ranking_filtering(num_of_thread, vector<value_type>(data->num_of_relation, 0));
 
         int testing_size = data->num_of_testing_triples;
 
@@ -99,9 +103,15 @@ namespace EvaluationUtil {
         value_type *RAT = new value_type[parameter->dimension * data->num_of_entity];
 
         for (int relation_id = 0; relation_id < data->num_of_relation; relation_id++) {
-            vector <Tuple<int>> &tuples = data->test_rel2tuples[relation_id];
+            vector<Tuple<int> > &tuples = data->test_rel2tuples[relation_id];
 
             value_type *R = Rs + relation_id * parameter->dimension * parameter->dimension;
+
+#ifdef mkl4IPRank
+            mkl_set_num_threads(num_of_thread);
+#endif
+
+            timer.start();
 
             // calculate AR and RAT as cache
             matrix_product_mkl(A, R, AR, data->num_of_entity, parameter->dimension,
@@ -110,15 +120,23 @@ namespace EvaluationUtil {
             matrix_product_transpose_mkl(R, A, RAT, parameter->dimension, parameter->dimension,
                                          data->num_of_entity, parameter->dimension);
 
+            timer.stop();
+
             int size4relation = tuples.size();
 
-            int workload = size4relation / parameter->num_of_thread +
-                           ((size4relation % parameter->num_of_thread == 0) ? 0 : 1);
+            int workload = size4relation / num_of_thread +
+                           ((size4relation % num_of_thread == 0) ? 0 : 1);
+
+#ifdef mkl4IPRank
+            mkl_set_num_threads(1);
+#endif
 
             std::function<void(int)> compute_func = [&](int thread_index) -> void {
 
                 int start = thread_index * workload;
                 int end = std::min(start + workload, size4relation);
+
+                Monitor thread_timer;
 
 #ifdef detailed_eval
                 vector<ull> &counts_s = rel_counts_s[thread_index];
@@ -128,18 +146,18 @@ namespace EvaluationUtil {
                 vector<value_type> &inv_counts_s_ranking = inv_rel_counts_s_ranking[thread_index];
                 vector<value_type> &inv_counts_o_ranking = inv_rel_counts_o_ranking[thread_index];
 #endif
-                vector <ull> &counts_s_filtering = rel_counts_s_filtering[thread_index];
-                vector <ull> &counts_o_filtering = rel_counts_o_filtering[thread_index];
-                vector <ull> &counts_s_ranking_filtering = rel_counts_s_ranking_filtering[thread_index];
-                vector <ull> &counts_o_ranking_filtering = rel_counts_o_ranking_filtering[thread_index];
-                vector <value_type> &inv_counts_s_ranking_filtering = inv_rel_counts_s_ranking_filtering[thread_index];
-                vector <value_type> &inv_counts_o_ranking_filtering = inv_rel_counts_o_ranking_filtering[thread_index];
+                vector<ull> &counts_s_filtering = rel_counts_s_filtering[thread_index];
+                vector<ull> &counts_o_filtering = rel_counts_o_filtering[thread_index];
+                vector<ull> &counts_s_ranking_filtering = rel_counts_s_ranking_filtering[thread_index];
+                vector<ull> &counts_o_ranking_filtering = rel_counts_o_ranking_filtering[thread_index];
+                vector<value_type> &inv_counts_s_ranking_filtering = inv_rel_counts_s_ranking_filtering[thread_index];
+                vector<value_type> &inv_counts_o_ranking_filtering = inv_rel_counts_o_ranking_filtering[thread_index];
 
                 // first: entity id, second: score
 #ifdef detailed_eval
                 vector<pair<int, value_type> > result(data->num_of_entity);
 #endif
-                vector <pair<int, value_type>> result_filtering(data->num_of_entity);
+                vector<pair<int, value_type> > result_filtering(data->num_of_entity);
                 int result_filtering_index = 0;
 
                 value_type *score_list = new value_type[data->num_of_entity];
@@ -151,8 +169,14 @@ namespace EvaluationUtil {
                     // first replace subject with other entities
                     // AR*A_jt
                     value_type *A_row = A + test_tuple.object * parameter->dimension;
+
+#ifdef mkl4IPRank
                     matrix_product_transpose_mkl(AR, A_row, score_list, data->num_of_entity, parameter->dimension, 1,
-                                                 parameter->dimension);
+                                         parameter->dimension);
+#else
+                    matrix_product_transpose(AR, A_row, score_list, data->num_of_entity, parameter->dimension, 1,
+                                             parameter->dimension);
+#endif
 
                     result_filtering_index = 0;
 
@@ -173,14 +197,14 @@ namespace EvaluationUtil {
                     std::sort(result.begin(), result.end(), &CompareUtil::pairGreaterCompare<int>);
 #endif
                     std::sort(result_filtering.begin(), result_filtering.begin() + result_filtering_index,
-                              &CompareUtil::pairGreaterCompare < int > );
+                              &CompareUtil::pairGreaterCompare<int>);
 
 #ifdef detailed_eval
                     bool found = false;
 #endif
                     bool found_filtering = false;
 
-                    for (int i = 0; i < parameter->hit_rate_topk; i++) {
+                    for (int i = 0; i < hit_rate_topk; i++) {
 #ifdef detailed_eval
                         if (result[i].first == test_tuple.subject) {
                             counts_s[relation_id]++;
@@ -200,7 +224,7 @@ namespace EvaluationUtil {
 
 #ifdef detailed_eval
                     if (!found) {
-                        for (int i = parameter->hit_rate_topk; i < data->num_of_entity; i++) {
+                        for (int i = hit_rate_topk; i < data->num_of_entity; i++) {
                             if (result[i].first == test_tuple.subject) {
                                 counts_s_ranking[relation_id] += i + 1;
                                 inv_counts_s_ranking[relation_id] += 1.0 / (i + 1);
@@ -212,7 +236,7 @@ namespace EvaluationUtil {
 #endif
 
                     if (!found_filtering) {
-                        for (int i = parameter->hit_rate_topk; i < result_filtering_index; i++) {
+                        for (int i = hit_rate_topk; i < result_filtering_index; i++) {
                             if (result_filtering[i].first == test_tuple.subject) {
                                 counts_s_ranking_filtering[relation_id] += i + 1;
                                 inv_counts_s_ranking_filtering[relation_id] += 1.0 / (i + 1);
@@ -237,8 +261,14 @@ namespace EvaluationUtil {
                     // then replace object with other entities
                     // A_i * RAT
                     A_row = A + test_tuple.subject * parameter->dimension;
+
+#ifdef mkl4IPRank
                     matrix_product_mkl(A_row, RAT, score_list, 1, parameter->dimension, parameter->dimension,
-                                       data->num_of_entity);
+                               data->num_of_entity);
+#else
+                    matrix_product(A_row, RAT, score_list, 1, parameter->dimension, parameter->dimension,
+                                   data->num_of_entity);
+#endif
 
                     result_filtering_index = 0;
 
@@ -262,14 +292,14 @@ namespace EvaluationUtil {
                     std::sort(result.begin(), result.end(), &CompareUtil::pairGreaterCompare<int>);
 #endif
                     std::sort(result_filtering.begin(), result_filtering.begin() + result_filtering_index,
-                              &CompareUtil::pairGreaterCompare < int > );
+                              &CompareUtil::pairGreaterCompare<int>);
 
                     found_filtering = false;
 #ifdef detailed_eval
                     found = false;
 #endif
 
-                    for (int i = 0; i < parameter->hit_rate_topk; i++) {
+                    for (int i = 0; i < hit_rate_topk; i++) {
 #ifdef detailed_eval
                         if (result[i].first == test_tuple.object) {
                             counts_o[relation_id]++;
@@ -289,7 +319,7 @@ namespace EvaluationUtil {
 
 #ifdef detailed_eval
                     if (!found) {
-                        for (int i = parameter->hit_rate_topk; i < data->num_of_entity; i++) {
+                        for (int i = hit_rate_topk; i < data->num_of_entity; i++) {
                             if (result[i].first == test_tuple.object) {
                                 counts_o_ranking[relation_id] += i + 1;
                                 inv_counts_o_ranking[relation_id] += 1.0 / (i + 1);
@@ -301,7 +331,7 @@ namespace EvaluationUtil {
 #endif
 
                     if (!found_filtering) {
-                        for (int i = parameter->hit_rate_topk; i < result_filtering_index; i++) {
+                        for (int i = hit_rate_topk; i < result_filtering_index; i++) {
                             if (result_filtering[i].first == test_tuple.object) {
                                 counts_o_ranking_filtering[relation_id] += i + 1;
                                 inv_counts_o_ranking_filtering[relation_id] += 1.0 / (i + 1);
@@ -327,7 +357,7 @@ namespace EvaluationUtil {
                 delete[] score_list;
             };
 
-            for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
+            for(int thread_index = 0; thread_index < num_of_thread; thread_index++) {
                 eval_thread_pool->schedule(std::bind(compute_func, thread_index));
             }
 
@@ -368,15 +398,15 @@ namespace EvaluationUtil {
         measure.inv_count_s_ranking_filtering = 0;
         measure.inv_count_o_ranking_filtering = 0;
 
-        vector <ull> rel_s_filtering(data->num_of_relation, 0);
-        vector <ull> rel_o_filtering(data->num_of_relation, 0);
-        vector <ull> rel_s_ranking_filtering(data->num_of_relation, 0);
-        vector <ull> rel_o_ranking_filtering(data->num_of_relation, 0);
+        vector<ull> rel_s_filtering(data->num_of_relation, 0);
+        vector<ull> rel_o_filtering(data->num_of_relation, 0);
+        vector<ull> rel_s_ranking_filtering(data->num_of_relation, 0);
+        vector<ull> rel_o_ranking_filtering(data->num_of_relation, 0);
 
-        vector <value_type> inv_rel_s_ranking_filtering(data->num_of_relation, 0);
-        vector <value_type> inv_rel_o_ranking_filtering(data->num_of_relation, 0);
+        vector<value_type > inv_rel_s_ranking_filtering(data->num_of_relation, 0);
+        vector<value_type > inv_rel_o_ranking_filtering(data->num_of_relation, 0);
 
-        for (int thread_id = 0; thread_id < parameter->num_of_thread; thread_id++) {
+        for (int thread_id = 0; thread_id < num_of_thread; thread_id++) {
 #ifdef detailed_eval
             vector<ull> &counts_s = rel_counts_s[thread_id];
             vector<ull> &counts_o = rel_counts_o[thread_id];
@@ -385,12 +415,12 @@ namespace EvaluationUtil {
             vector<value_type> &inv_counts_s_ranking = inv_rel_counts_s_ranking[thread_id];
             vector<value_type> &inv_counts_o_ranking = inv_rel_counts_o_ranking[thread_id];
 #endif
-            vector <ull> &counts_s_filtering = rel_counts_s_filtering[thread_id];
-            vector <ull> &counts_o_filtering = rel_counts_o_filtering[thread_id];
-            vector <ull> &counts_s_ranking_filtering = rel_counts_s_ranking_filtering[thread_id];
-            vector <ull> &counts_o_ranking_filtering = rel_counts_o_ranking_filtering[thread_id];
-            vector <value_type> &inv_counts_s_ranking_filtering = inv_rel_counts_s_ranking_filtering[thread_id];
-            vector <value_type> &inv_counts_o_ranking_filtering = inv_rel_counts_o_ranking_filtering[thread_id];
+            vector<ull> &counts_s_filtering = rel_counts_s_filtering[thread_id];
+            vector<ull> &counts_o_filtering = rel_counts_o_filtering[thread_id];
+            vector<ull> &counts_s_ranking_filtering = rel_counts_s_ranking_filtering[thread_id];
+            vector<ull> &counts_o_ranking_filtering = rel_counts_o_ranking_filtering[thread_id];
+            vector<value_type> &inv_counts_s_ranking_filtering = inv_rel_counts_s_ranking_filtering[thread_id];
+            vector<value_type> &inv_counts_o_ranking_filtering = inv_rel_counts_o_ranking_filtering[thread_id];
 
             for (int relation_id = 0; relation_id < data->num_of_relation; relation_id++) {
 #ifdef detailed_eval
