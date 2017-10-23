@@ -1,5 +1,9 @@
-#ifndef RESCAL_NAIVE_H
-#define RESCAL_NAIVE_H
+//
+// Created by dhding on 10/23/17.
+//
+
+#ifndef DISTRESCAL_RESCAL_POS_H
+#define DISTRESCAL_RESCAL_POS_H
 
 #include "../util/Base.h"
 #include "../util/RandomUtil.h"
@@ -20,7 +24,7 @@ using namespace Calculator;
  * Margin based RESCAL
  */
 template<typename OptimizerType>
-class RESCAL_NAIVE : virtual public MarginBasedOptimizer<OptimizerType> {
+class RESCAL_POS : virtual public MarginBasedOptimizer<OptimizerType> {
 
 protected:
     using MarginBasedOptimizer<OptimizerType>::data;
@@ -76,28 +80,15 @@ protected:
     }
 
     void update(const Sample &sample) {
-
-        value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR, parameter);
-        value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR, parameter);
-
         value_type p_pre = 1;
-        value_type n_pre = 1;
-
-//        if (positive_score - negative_score >= parameter->margin) {
-//            return;
-//        }
-
-        if (positive_score - negative_score < parameter->margin) {
-            violations++;
-        }
 
         //DenseMatrix grad4R(parameter.rescal_D, parameter.rescal_D);
         value_type *grad4R = new value_type[parameter->dimension * parameter->dimension];
         unordered_map<int, value_type *> grad4A_map;
 
         // Step 1: compute gradient descent
-        update_4_R(sample, grad4R, p_pre, n_pre);
-        update_4_A(sample, grad4A_map, p_pre, n_pre);
+        update_4_R(sample, grad4R, p_pre);
+        update_4_A(sample, grad4A_map, p_pre);
 
         // Step 2: do the update
         update_grad(rescalR + sample.relation_id * parameter->dimension * parameter->dimension, grad4R,
@@ -108,7 +99,6 @@ protected:
         for (auto ptr = grad4A_map.begin(); ptr != grad4A_map.end(); ptr++) {
 
             //Vec A_grad = ptr->second - parameter.lambdaA * row(rescalA, ptr->first);
-            //TODO: DOUBLE CHECK
             for (int i = 0; i < parameter->dimension; ++i) {
                 A_grad[i] = ptr->second[i] - parameter->lambdaA * rescalA[ptr->first * parameter->dimension + i];
             }
@@ -141,8 +131,7 @@ protected:
 
 protected:
 
-    void update_4_A(const Sample &sample, unordered_map<int, value_type*> &grad4A_map, const value_type p_pre,
-                    const value_type n_pre) {
+    void update_4_A(const Sample &sample, unordered_map<int, value_type*> &grad4A_map, const value_type p_pre) {
         //cout<<"Entering update4A\n";
         //DenseMatrix &R_k = rescalR[sample.relation_id];
         value_type * R_k = rescalR + sample.relation_id * parameter->dimension * parameter->dimension;
@@ -162,24 +151,6 @@ protected:
             p_tmp2[i] = 0;
             for (int j = 0; j < parameter->dimension; ++j) {
                 p_tmp2[i] += rescalA[sample.p_sub * parameter->dimension + j] * R_k[j * parameter->dimension + i];
-            }
-        }
-
-        //Vec n_tmp1 = prod(R_k, row(rescalA, sample.n_obj));
-        value_type *n_tmp1 = new value_type[parameter->dimension];
-        for (int i = 0; i < parameter->dimension; ++i) {
-            n_tmp1[i] = 0;
-            for (int j = 0; j < parameter->dimension; ++j) {
-                n_tmp1[i] += R_k[i * parameter->dimension + j] * rescalA[sample.n_obj * parameter->dimension + j];
-            }
-        }
-
-        //Vec n_tmp2 = prod(row(rescalA, sample.n_sub), R_k);
-        value_type *n_tmp2 = new value_type[parameter->dimension];
-        for (int i = 0; i < parameter->dimension; ++i) {
-            n_tmp2[i] = 0;
-            for (int j = 0; j < parameter->dimension; ++j) {
-                n_tmp2[i] += rescalA[sample.n_sub * parameter->dimension + j] * R_k[j * parameter->dimension + i];
             }
         }
 
@@ -203,48 +174,16 @@ protected:
             }
         }
 
-        ptr = grad4A_map.find(sample.n_sub);
-        if (ptr == grad4A_map.end()) {
-            //grad4A_map[sample.n_sub] = n_pre * (-n_tmp1);
-            grad4A_map[sample.n_sub] = new value_type[parameter->dimension];
-            for (int i = 0; i < parameter->dimension; ++i) {
-                grad4A_map[sample.n_sub][i] = n_pre * (-n_tmp1[i]);
-            }
-        } else {
-            //grad4A_map[sample.n_sub] += n_pre * (-n_tmp1);
-            for (int i = 0; i < parameter->dimension; ++i) {
-                grad4A_map[sample.n_sub][i] += n_pre * (-n_tmp1[i]);
-            }
-        }
-
-        ptr = grad4A_map.find(sample.n_obj);
-        if (ptr == grad4A_map.end()) {
-            //grad4A_map[sample.n_obj] = n_pre * (-n_tmp2);
-            grad4A_map[sample.n_obj] = new value_type[parameter->dimension];
-            for (int i = 0; i < parameter->dimension; ++i) {
-                grad4A_map[sample.n_obj][i] = n_pre * (-n_tmp2[i]);
-            }
-        } else {
-            //grad4A_map[sample.n_obj] += n_pre * (-n_tmp2);
-            for (int i = 0; i < parameter->dimension; ++i) {
-                grad4A_map[sample.n_obj][i] += n_pre * (-n_tmp2[i]);
-            }
-        }
 
         delete [] p_tmp1;
         delete [] p_tmp2;
-        delete [] n_tmp1;
-        delete [] n_tmp2;
         //cout<<"Exiting update4A\n";
     }
 
-    void update_4_R(const Sample &sample, value_type *grad4R, const value_type p_pre, const value_type n_pre) {
+    void update_4_R(const Sample &sample, value_type *grad4R, const value_type p_pre) {
         //cout<<"Entering update4R\n";
         value_type *p_sub = rescalA + sample.p_sub * parameter->dimension;
         value_type *p_obj = rescalA + sample.p_obj * parameter->dimension;
-
-        value_type *n_sub = rescalA + sample.n_sub * parameter->dimension;
-        value_type *n_obj = rescalA + sample.n_obj * parameter->dimension;
 
 
         //grad4R.clear();
@@ -258,7 +197,7 @@ protected:
 //
         for (int i = 0; i < parameter->dimension; i++) {
             for (int j = 0; j < parameter->dimension; j++) {
-                grad4R[i * parameter->dimension + j] += p_pre * p_sub[i] * p_obj[j] - n_pre * n_sub[i] * n_obj[j];
+                grad4R[i * parameter->dimension + j] += p_pre * p_sub[i] * p_obj[j];
             }
         }
 
@@ -271,14 +210,13 @@ protected:
                         -parameter->lambdaR * R_k[i * parameter->dimension + j];
             }
         }
-        //TODO: Double check.
         //cout<<"Exiting update4R\n";
     }
 
 public:
-    explicit RESCAL_NAIVE<OptimizerType>(Parameter &parameter, Data &data) : MarginBasedOptimizer<OptimizerType>(parameter, data) {}
+    explicit RESCAL_POS<OptimizerType>(Parameter &parameter, Data &data) : MarginBasedOptimizer<OptimizerType>(parameter, data) {}
 
-    ~RESCAL_NAIVE() {
+    ~RESCAL_POS() {
         delete[] rescalA;
         delete[] rescalR;
         delete[] rescalA_G;
@@ -286,4 +224,4 @@ public:
     }
 };
 
-#endif //RESCAL_NAIVE_H
+#endif //DISTRESCAL_RESCAL_POS_H

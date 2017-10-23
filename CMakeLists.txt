@@ -32,7 +32,7 @@ set(alg
     alg/MarginBasedOptimizer.h
     alg/RESCAL_LOCK.h
     alg/RESCAL_NOLOCK.h
-    alg/Optimizer.h alg/RESCAL_NOLOCK.h alg/RESCAL_BLOCK.h alg/RESCAL_BATCH.h)
+    alg/Optimizer.h alg/RESCAL_NOLOCK.h alg/RESCAL_BLOCK.h alg/RESCAL_BATCH.h alg/RESCAL_POS.h)
 
 set(util
     util/Monitor.h
@@ -69,3 +69,4 @@ add_executable(runRESCAL_LOCK src/runRESCAL_LOCK.cpp)
 add_executable(runRESCAL_NOLOCK src/runRESCAL_NOLOCK.cpp)
 add_executable(runRESCAL_BLOCK src/runRESCAL_BLOCK.cpp)
 add_executable(runRESCAL_BATCH src/runRESCAL_BATCH.cpp)
+add_executable(runRESCAL_POS src/runRESCAL_POS.cpp)
