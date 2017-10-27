@@ -142,5 +142,8 @@ namespace Calculator {
 //        return result;
     }
 
+    inline value_type sigmoid (const value_type x){
+        return 1.0/(1+exp(-x));
+    }
 };
 #endif //CALCULATOR_H
