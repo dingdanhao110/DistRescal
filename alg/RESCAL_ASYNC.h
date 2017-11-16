@@ -113,6 +113,7 @@ public:
                     for (int n = start; n < end; n++) {
                         local_update(GradientR,GradientA,training_samples[n]);
                     }
+                    //sync_update(GradientR,GradientA);
                     sync_gradient(GradientR,GradientA);
                 }, thread_index));
             }
@@ -121,18 +122,15 @@ public:
             timer.stop();
             cout << "async calculation time " << timer.getElapsedTime() << " secs" << endl;
 
-            total_time += timer.getElapsedTime();
-
             timer.start();
 
-            value_type weight = 1.0/training_samples.size();
-            this->global_update(weight);
+            global_update(1);
 
             timer.stop();
 
-            total_time += timer.getElapsedTime();
+            cout << "global update time " << timer.getElapsedTime() << " secs" << endl;
 
-            cout << "global updating time " << timer.getElapsedTime() << " secs" << endl;
+            total_time += timer.getElapsedTime();
 
             cout << "violations: " << violations << endl;
 
@@ -361,6 +359,29 @@ protected:
         }
     }
 
+    void sync_update(map<int,value_type *> &GradientR, map<int,value_type *> &GradientA){
+        //Step 1: Acquire lock
+        std::lock_guard<mutex> l(globalMutex);
+
+        //Step 2: do the update
+        for(auto& pair:GradientR) {
+            int r = pair.first;
+            auto ptr = pair.second;
+            update_grad(rescalR + r * parameter->dimension * parameter->dimension, ptr,
+                        rescalR_G + r * parameter->dimension * parameter->dimension,
+                        parameter->dimension * parameter->dimension, parameter);
+        }
+
+        for(auto& pair:GradientA) {
+            int e = pair.first;
+            auto ptr = pair.second;
+            update_grad(rescalA + parameter->dimension * e, ptr,
+                        rescalA_G + parameter->dimension * e,
+                        parameter->dimension, parameter);
+        }
+    }
+
+
     void eval(const int epoch) {
 
         hit_rate testing_measure = eval_hit_rate(parameter, data, rescalA, rescalR);
@@ -513,7 +534,6 @@ public:
         this->parameter = &parameter;
         this->data = &data;
         computation_thread_pool = new pool(parameter.num_of_thread);
-        block_size = this->data->num_of_entity / (parameter.num_of_thread * 3 + 3) + 1;
         for(auto& ptr:totalR){
             ptr=new value_type[parameter.dimension*parameter.dimension];
             std::fill(ptr, ptr + parameter.dimension*parameter.dimension, 0);
