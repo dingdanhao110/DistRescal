@@ -251,6 +251,7 @@ private:
                 relation_id = rel2newid[relation_encoder.size()];
                 relation_encoder[triple_str.relation] = relation_id;
                 relation_decoder[relation_id] = triple_str.relation;
+
             } else {
                 relation_id = relation_encoder[triple_str.relation];
             }
@@ -259,6 +260,7 @@ private:
                 subject_id = entity2newid[entity_encoder.size()];
                 entity_encoder[triple_str.subject] = subject_id;
                 entity_decoder[subject_id] = triple_str.subject;
+
             } else {
                 subject_id = entity_encoder[triple_str.subject];
             }
@@ -267,6 +269,7 @@ private:
                 object_id = entity2newid[entity_encoder.size()];
                 entity_encoder[triple_str.object] = object_id;
                 entity_decoder[object_id] = triple_str.object;
+
             } else {
                 object_id = entity_encoder[triple_str.object];
             }

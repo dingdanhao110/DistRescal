@@ -148,6 +148,7 @@ public:
                         const auto& bucket=batch_assigner.get_buckets()[thread_index];
                         //Call update functions
                         for(auto& sample:bucket.get_samples()){
+                            //cout<<"thread "<<std::this_thread::get_id()<<": updating\n";
                             update(sample);
                         }
                     }, thread_index));
@@ -301,7 +302,7 @@ protected:
             //Vec A_grad = ptr->second - parameter.lambdaA * row(rescalA, ptr->first);
 
             for (int i = 0; i < parameter->dimension; ++i) {
-                A_grad[i] = ptr->second[i] + parameter->lambdaA * rescalA[ptr->first * parameter->dimension + i];
+                A_grad[i] = ptr->second[i] - parameter->lambdaA * rescalA[ptr->first * parameter->dimension + i];
             }
 
             update_grad(rescalA + parameter->dimension * ptr->first, A_grad,
@@ -424,7 +425,7 @@ protected:
 
         for(auto& pair: grad4A_map){
             for (int i = 0; i < parameter->dimension; ++i) {
-                pair.second[i]= -positive_score*sigmoid( pair.second[i]);
+                pair.second[i]= positive_score*sigmoid( -pair.second[i]);
             }
         }
 
@@ -433,12 +434,12 @@ protected:
             if(ptr==grad4A_map.end()){
                 grad4A_map[pair.first]=new value_type[parameter->dimension];
                 for (int i = 0; i < parameter->dimension; ++i) {
-                    grad4A_map[pair.first][i] = negative_score*sigmoid(grad4AN_map[pair.first][i]);
+                    grad4A_map[pair.first][i] = -negative_score*sigmoid(-grad4AN_map[pair.first][i]);
                 }
             }
             else{
                 for (int i = 0; i < parameter->dimension; ++i) {
-                    grad4A_map[pair.first][i] += negative_score*sigmoid(grad4AN_map[pair.first][i]);
+                    grad4A_map[pair.first][i] += -negative_score*sigmoid(-grad4AN_map[pair.first][i]);
                 }
             }
         }
@@ -489,9 +490,9 @@ protected:
 
         for (int i = 0; i < parameter->dimension; i++) {
             for (int j = 0; j < parameter->dimension; j++) {
-                grad4R[i * parameter->dimension + j] = -positive_score*sigmoid(grad4R[i * parameter->dimension + j])
-                                                       +negative_score*sigmoid(grad4RN[i * parameter->dimension + j])
-                        +parameter->lambdaR * R_k[i * parameter->dimension + j];
+                grad4R[i * parameter->dimension + j] = positive_score*sigmoid(-grad4R[i * parameter->dimension + j])
+                                                       -negative_score*sigmoid(-grad4RN[i * parameter->dimension + j])
+                        -parameter->lambdaR * R_k[i * parameter->dimension + j];
             }
         }
         delete[] grad4RN;

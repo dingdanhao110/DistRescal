@@ -49,6 +49,7 @@ public:
         value_type total_time = 0.0;
 
         for (int epoch = current_epoch; epoch <= parameter->epoch; epoch++) {
+            violations = 0;
             //Sample all training data
             timer.start();
             //Bucket_assigner bucket_assigner(parameter->num_of_thread);
@@ -71,10 +72,15 @@ public:
                             Sampler::random_sample_multithreaded(*data, sample, indices[n],generator);
                         }
                         //cout<<"Thread "<<std::this_thread::get_id()<<": Work assigned"<<endl;
-                        //update(sample);
+
+                        value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR, parameter);
+                        value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR, parameter);
+                        if (positive_score - negative_score >= 2*parameter->margin) {
+                            continue;
+                        }
                         {
-                            //TODO: Collect samples...
                             std::lock_guard<std::mutex> lock(mutex_scheduler);
+                            violations++;
                             training_samples.push_back(sample);
                             batch_assigner.assign(sample);
                         }
@@ -105,7 +111,7 @@ public:
 //            }
 //            cout<<endl;
             //allocate samples and update in parallel
-            violations = 0;
+
             loss = 0;
             timer.start();
 
@@ -261,16 +267,14 @@ protected:
         //cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
         value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR, parameter);
         value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR, parameter);
+        if (positive_score - negative_score >= parameter->margin) {
+            return;
+        }
 
         value_type p_pre = 1;
         value_type n_pre = 1;
 
-        if (positive_score - negative_score >= parameter->margin) {
-            return;
-        }
-        if (positive_score - negative_score < parameter->margin) {
-            violations++;
-        }
+
         //DenseMatrix grad4R(parameter.rescal_D, parameter.rescal_D);
         value_type *grad4R = new value_type[parameter->dimension * parameter->dimension];
         unordered_map<int, value_type *> grad4A_map;

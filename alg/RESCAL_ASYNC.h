@@ -1,9 +1,10 @@
 //
-// Created by dhding on 9/15/17.
+// Created by dhding on 11/12/17.
 //
 
-#ifndef DISTRESCAL_RESCAL_LOCK_H
-#define DISTRESCAL_RESCAL_LOCK_H
+#ifndef DISTRESCAL_RESCAL_ASYNC_H
+#define DISTRESCAL_RESCAL_ASYNC_H
+
 
 #include "../util/Base.h"
 #include "../util/RandomUtil.h"
@@ -21,10 +22,10 @@ using namespace FileUtil;
 using namespace Calculator;
 
 /**
- * Margin based RESCAL_LOCK
+ * Margin based asynchronized rescal
  */
 template<typename OptimizerType>
-class RESCAL_LOCK {
+class RESCAL_ASYNC {
 public:
     /**
      * Start to train
@@ -48,31 +49,42 @@ public:
         value_type total_time = 0.0;
 
         for (int epoch = current_epoch; epoch <= parameter->epoch; epoch++) {
-
             violations = 0;
-            loss = 0;
-
+            //Sample all training data
             timer.start();
-
+            vector<Sample> training_samples(0);
+            training_samples.reserve(data->num_of_training_triples);
+            std::mutex mutex_scheduler;
             std::random_shuffle(indices.begin(), indices.end());
-
             for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
 
                 computation_thread_pool->schedule(std::bind([&](const int thread_index) {
-
+                    std::mt19937 *generator = new std::mt19937(
+                            clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
                     int start = thread_index * workload;
                     int end = std::min(start + workload, data->num_of_training_triples);
                     Sample sample;
                     for (int n = start; n < end; n++) {
-                        if(parameter->num_of_thread == 1){
+                        if (parameter->num_of_thread == 1) {
                             Sampler::random_sample(*data, sample, indices[n]);
                         } else {
-                            Sampler::random_sample_multithreaded(*data, sample, indices[n]);
+                            Sampler::random_sample_multithreaded(*data, sample, indices[n], generator);
                         }
                         //cout<<"Thread "<<std::this_thread::get_id()<<": Work assigned"<<endl;
-                        update(sample);
-                    }
 
+                        value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj,
+                                                                     rescalA, rescalR, parameter);
+                        value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj,
+                                                                     rescalA, rescalR, parameter);
+                        if (positive_score - negative_score >= parameter->margin) {
+                            continue;
+                        }
+                        {
+                            std::lock_guard<std::mutex> lock(mutex_scheduler);
+                            violations++;
+                            training_samples.push_back(sample);
+                        }
+                    }
                 }, thread_index));
             }
 
@@ -81,14 +93,50 @@ public:
             timer.stop();
 
             total_time += timer.getElapsedTime();
-
             cout << "------------------------" << endl;
+            cout << "epoch " << epoch << ", sampling time " << timer.getElapsedTime() << " secs" << endl;
 
-            cout << "epoch " << epoch << ", time " << timer.getElapsedTime() << " secs" << endl;
+            loss = 0;
+            timer.start();
+
+            int workload = data->num_of_training_triples / parameter->num_of_thread;
+
+            for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
+
+                computation_thread_pool->schedule(std::bind([&](const int thread_index) {
+                    map<int,value_type *> GradientR;
+                    map<int,value_type *> GradientA;
+
+                    int start = thread_index * workload;
+                    int end = std::min(start + workload, data->num_of_training_triples);
+
+                    for (int n = start; n < end; n++) {
+                        local_update(GradientR,GradientA,training_samples[n]);
+                    }
+                    sync_gradient(GradientR,GradientA);
+                }, thread_index));
+            }
+            computation_thread_pool->wait();
+
+            timer.stop();
+            cout << "async calculation time " << timer.getElapsedTime() << " secs" << endl;
+
+            total_time += timer.getElapsedTime();
+
+            timer.start();
+
+            value_type weight = 1.0/training_samples.size();
+            this->global_update(weight);
+
+            timer.stop();
+
+            total_time += timer.getElapsedTime();
+
+            cout << "global updating time " << timer.getElapsedTime() << " secs" << endl;
 
             cout << "violations: " << violations << endl;
 
-            if(parameter->show_loss) {
+            if (parameter->show_loss) {
 
                 timer.start();
 
@@ -122,23 +170,27 @@ public:
 
         cout << "Total Training Time: " << total_time << " secs" << endl;
     }
+
 protected:
     // Functor object of update function
     OptimizerType update_grad;
 
     pool *computation_thread_pool = nullptr;
-    Parameter *parameter= nullptr;
-    Data *data= nullptr;
-    int current_epoch=0;
-    int violations=0;
-    value_type loss=0;
-    std::mutex* A_locks;
-    std::mutex* R_locks;
+    Parameter *parameter = nullptr;
+    Data *data = nullptr;
+    int current_epoch = 0;
+    int violations = 0;
+    value_type loss = 0;
 
     value_type *rescalA;//DenseMatrix, UNSAFE!
     value_type *rescalR;//vector<DenseMatrix>, UNSAFE!
     value_type *rescalA_G;//DenseMatrix, UNSAFE!
     value_type *rescalR_G;//vector<DenseMatrix>, UNSAFE!
+
+    std::mutex globalMutex;//mutex for totalA and totalR
+
+    vector<value_type*> totalR;
+    vector<value_type*> totalA;
 
     value_type cal_loss() {
         return cal_loss_single_thread(parameter, data, rescalA, rescalR);
@@ -157,7 +209,7 @@ protected:
         this->current_epoch = 1;
 
         rescalA = new value_type[data->num_of_entity * parameter->dimension];
-        rescalR = new value_type [data->num_of_relation * parameter->dimension * parameter->dimension];
+        rescalR = new value_type[data->num_of_relation * parameter->dimension * parameter->dimension];
 
         init_G(parameter->dimension);
 
@@ -181,94 +233,133 @@ protected:
         }
     }
 
-    void update(const Sample &sample) {
-        //cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
-
-        set<int> to_lock;
-        to_lock.insert(sample.p_obj);
-        to_lock.insert(sample.p_sub);
-        to_lock.insert(sample.n_obj);
-        to_lock.insert(sample.n_sub);
-
-        vector<std::unique_lock<std::mutex>> locks;
-        for(auto l:to_lock) {
-            locks.emplace_back(A_locks[l], std::defer_lock);
-        }
-        locks.emplace_back(R_locks[sample.relation_id],std::defer_lock);
-        switch (locks.size())
-        {
-            case 0:
-                break;
-            case 1:
-                locks.front().lock();
-                break;
-            case 2:
-                std::lock(locks[0], locks[1]);
-                break;
-            case 3:
-                std::lock(locks[0], locks[1], locks[2]);
-                break;
-            case 4:
-                std::lock(locks[0], locks[1], locks[2], locks[3]);
-                break;
-            case 5:
-                std::lock(locks[0], locks[1], locks[2], locks[3], locks[4]);
-                break;
-            default:
-                throw "oops";
-        }
-
-
-        //cout<<"Thread "<<std::this_thread::get_id()<<": lock set!"<<endl;
-
-        value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR, parameter);
-        value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR, parameter);
+    /*
+     * asynchronously calculate gradient for sample and accumulate to GradientR and GradientA
+     * */
+    void local_update(map<int,value_type *> &GradientR, map<int,value_type *> &GradientA, const Sample &sample) {
+//        value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR,
+//                                                     parameter);
+//        value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR,
+//                                                     parameter);
+//        if (positive_score - negative_score >= parameter->margin) {
+//            return;
+//        }
 
         value_type p_pre = 1;
         value_type n_pre = 1;
-
-        if (positive_score - negative_score >= parameter->margin) {
-            return;
-        }
-
-        violations++;
 
         //DenseMatrix grad4R(parameter.rescal_D, parameter.rescal_D);
         value_type *grad4R = new value_type[parameter->dimension * parameter->dimension];
         unordered_map<int, value_type *> grad4A_map;
 
         // Step 1: compute gradient descent
-        update_4_R(sample, grad4R, p_pre, n_pre);
-        update_4_A(sample, grad4A_map, p_pre, n_pre);
+        update_4_R(sample, grad4R, p_pre, n_pre);//R normalized
+        update_4_A(sample, grad4A_map, p_pre, n_pre);//A not yet normalized
 
-        // Step 2: do the update
-        update_grad(rescalR + sample.relation_id * parameter->dimension * parameter->dimension, grad4R,
-                    rescalR_G + sample.relation_id * parameter->dimension * parameter->dimension,
-                    parameter->dimension * parameter->dimension, parameter);
-
-        value_type *A_grad = new value_type[parameter->dimension];
+        // Step 2: normalize grad4A.
         for (auto ptr = grad4A_map.begin(); ptr != grad4A_map.end(); ptr++) {
-
             //Vec A_grad = ptr->second - parameter.lambdaA * row(rescalA, ptr->first);
-            //TODO: DOUBLE CHECK
             for (int i = 0; i < parameter->dimension; ++i) {
-                A_grad[i] = ptr->second[i] - parameter->lambdaA * rescalA[ptr->first * parameter->dimension + i];
+                ptr->second[i] = ptr->second[i]
+                                 -parameter->lambdaA * rescalA[ptr->first * parameter->dimension
+                                                               + i];
             }
-
-            update_grad(rescalA + parameter->dimension * ptr->first, A_grad,
-                        rescalA_G + parameter->dimension * ptr->first,
-                        parameter->dimension, parameter);
         }
-        delete[] A_grad;//cout<<"Free A-grd\n";
-        delete[] grad4R;//cout<<"Free grad4R\n";
 
-        for(auto pair:grad4A_map){
+        // Step 3: save grad4A and grad4R to GradientA and GradientR
+        for (auto &pair: grad4A_map) {
+            if(GradientA.find(pair.first)==GradientA.end()){
+                GradientA[pair.first]=new value_type[parameter->dimension];
+                for (int i = 0; i < parameter->dimension; ++i) {
+                    GradientA[pair.first][i] = pair.second[i];
+                }
+            }
+            else {
+                for (int i = 0; i < parameter->dimension; ++i) {
+                    GradientA[pair.first][i] += pair.second[i];
+                }
+            }
+        }
+
+        if(GradientR.find(sample.relation_id)==GradientR.end()){
+            GradientR[sample.relation_id]=new value_type[parameter->dimension*parameter->dimension];
+            for (int i = 0; i < parameter->dimension; i++) {
+                for (int j = 0; j < parameter->dimension; j++) {
+                    GradientR[sample.relation_id][i * parameter->dimension + j] =
+                            grad4R[i * parameter->dimension + j];
+                }
+            }
+        }
+        else {
+            for (int i = 0; i < parameter->dimension; i++) {
+                for (int j = 0; j < parameter->dimension; j++) {
+                    GradientR[sample.relation_id][i * parameter->dimension + j] +=
+                            grad4R[i * parameter->dimension + j];
+                }
+            }
+        }
+
+        delete[] grad4R;
+        for (auto pair:grad4A_map) {
             delete[] pair.second;
         }
-        //cout<<"Free grad4A_map\n";
-        //cout<<"Exiting update\n";
     }
 
+    //sync multithread gradient to totalR and totalA.
+    void sync_gradient(map<int,value_type *> &GradientR, map<int,value_type *> &GradientA){
+        //Step 1: Acquire lock for R and A.
+        std::lock_guard<mutex> l(globalMutex);
+        //Step 2: Add GradientR and GradientA to totalR and totalA.
+        for(auto& pair:GradientR) {
+            int r = pair.first;
+            auto ptr = pair.second;
+            for (int i = 0; i < parameter->dimension; i++) {
+                for (int j = 0; j < parameter->dimension; j++) {
+                    totalR[r][i * parameter->dimension + j] += ptr[i * parameter->dimension + j];
+                }
+            }
+        }
+
+        for(auto& pair:GradientA) {
+            int e = pair.first;
+            auto ptr = pair.second;
+            for (int i = 0; i < parameter->dimension; i++) {
+                totalA[e][i] += ptr[i];
+            }
+        }
+    }
+
+    //Update for one batch.
+    void global_update(value_type weight) {
+        //Step 1: Acquire lock
+        std::lock_guard<mutex> l(globalMutex);
+        //Step 2: apply weight to parameter step size
+        value_type ss = parameter->step_size;
+        parameter->step_size*=weight;
+
+        //Step 3: do the update
+        for(int r=0;r<totalR.size();++r) {
+            update_grad(rescalR + r * parameter->dimension * parameter->dimension, totalR[r],
+                        rescalR_G + r * parameter->dimension * parameter->dimension,
+                        parameter->dimension * parameter->dimension, parameter);
+        }
+
+        for (int e=0;e<totalA.size();++e) {
+            update_grad(rescalA + parameter->dimension * e, totalA[e],
+                        rescalA_G + parameter->dimension * e,
+                        parameter->dimension, parameter);
+        }
+
+        //Step 4: recover step size
+        parameter->step_size=ss;
+        //Step 5: Clear totalA and totalR
+        for(auto& ptr:totalR){
+            std::fill(ptr, ptr + parameter->dimension*parameter->dimension, 0);
+        }
+        for(auto& ptr:totalA){
+            std::fill(ptr, ptr + parameter->dimension, 0);
+        }
+    }
 
     void eval(const int epoch) {
 
@@ -283,11 +374,11 @@ protected:
 
 protected:
 
-    void update_4_A(const Sample &sample, unordered_map<int, value_type*> &grad4A_map, const value_type p_pre,
+    void update_4_A(const Sample &sample, unordered_map<int, value_type *> &grad4A_map, const value_type p_pre,
                     const value_type n_pre) {
         //cout<<"Entering update4A\n";
         //DenseMatrix &R_k = rescalR[sample.relation_id];
-        value_type * R_k = rescalR + sample.relation_id * parameter->dimension * parameter->dimension;
+        value_type *R_k = rescalR + sample.relation_id * parameter->dimension * parameter->dimension;
 
         //Vec p_tmp1 = prod(R_k, row(rescalA, sample.p_obj));
         value_type *p_tmp1 = new value_type[parameter->dimension];
@@ -373,10 +464,10 @@ protected:
             }
         }
 
-        delete [] p_tmp1;
-        delete [] p_tmp2;
-        delete [] n_tmp1;
-        delete [] n_tmp2;
+        delete[] p_tmp1;
+        delete[] p_tmp2;
+        delete[] n_tmp1;
+        delete[] n_tmp2;
         //cout<<"Exiting update4A\n";
     }
 
@@ -413,28 +504,34 @@ protected:
                         -parameter->lambdaR * R_k[i * parameter->dimension + j];
             }
         }
-        //TODO: Double check.
         //cout<<"Exiting update4R\n";
     }
 
 public:
-    explicit RESCAL_LOCK<OptimizerType>(Parameter &parameter, Data &data) {
-        this->parameter=&parameter;
-        this->data=&data;
+    explicit RESCAL_ASYNC<OptimizerType>(Parameter &parameter, Data &data):
+            totalR(data.num_of_relation),totalA(data.num_of_entity){
+        this->parameter = &parameter;
+        this->data = &data;
         computation_thread_pool = new pool(parameter.num_of_thread);
-        A_locks=new mutex[data.num_of_entity];
-        R_locks=new mutex[data.num_of_relation];
+        block_size = this->data->num_of_entity / (parameter.num_of_thread * 3 + 3) + 1;
+        for(auto& ptr:totalR){
+            ptr=new value_type[parameter.dimension*parameter.dimension];
+            std::fill(ptr, ptr + parameter.dimension*parameter.dimension, 0);
+        }
+
+        for(auto& ptr:totalA){
+            ptr=new value_type[parameter.dimension];
+            std::fill(ptr, ptr + parameter.dimension, 0);
+        }
     }
 
-    ~RESCAL_LOCK() {
+    ~RESCAL_ASYNC() {
         delete[] rescalA;
         delete[] rescalR;
         delete[] rescalA_G;
         delete[] rescalR_G;
         delete computation_thread_pool;
-        delete[] A_locks;
-        delete[] R_locks;
     }
 };
 
-#endif //DISTRESCAL_RESCAL_LOCK_H
+#endif //DISTRESCAL_RESCAL_ASYNC_H
