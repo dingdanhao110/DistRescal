@@ -41,9 +41,9 @@
 --epoch
 2000
 --p_epoch
-200
+2000
 --o_epoch
-200
+2000
 --lambdaA
 0.1
 --lambdaR

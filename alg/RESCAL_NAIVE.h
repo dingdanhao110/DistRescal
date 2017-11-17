@@ -271,7 +271,6 @@ protected:
                         -parameter->lambdaR * R_k[i * parameter->dimension + j];
             }
         }
-        //TODO: Double check.
         //cout<<"Exiting update4R\n";
     }
 
