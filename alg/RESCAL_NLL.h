@@ -49,18 +49,18 @@ public:
         value_type total_time = 0.0;
 
         for (int epoch = current_epoch; epoch <= parameter->epoch; epoch++) {
-            //Sample all training data
+            violations = 0;
+            loss = 0;
+
             timer.start();
-            //Bucket_assigner bucket_assigner(parameter->num_of_thread);
-            Batch_assigner batch_assigner(parameter->num_of_thread);
-            vector<Sample> training_samples(0);
-            training_samples.reserve(data->num_of_training_triples);
-            std::mutex mutex_scheduler;
+
+            //Sample all training data
             std::random_shuffle(indices.begin(), indices.end());
+
             for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
 
                 computation_thread_pool->schedule(std::bind([&](const int thread_index) {
-                    std::mt19937 *generator = new std::mt19937(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
+
                     int start = thread_index * workload;
                     int end = std::min(start + workload, data->num_of_training_triples);
                     Sample sample;
@@ -68,114 +68,25 @@ public:
                         if(parameter->num_of_thread == 1){
                             Sampler::random_sample(*data, sample, indices[n]);
                         } else {
-                            Sampler::random_sample_multithreaded(*data, sample, indices[n],generator);
+                            Sampler::random_sample_multithreaded(*data, sample, indices[n]);
                         }
                         //cout<<"Thread "<<std::this_thread::get_id()<<": Work assigned"<<endl;
-                        //update(sample);
-                        {
-                            //TODO: Collect samples...
-                            std::lock_guard<std::mutex> lock(mutex_scheduler);
-                            training_samples.push_back(sample);
-                            batch_assigner.assign(sample);
-                        }
-                    }
-                }, thread_index));
-            }
-
-            computation_thread_pool->wait();
-
-            timer.stop();
-
-            total_time += timer.getElapsedTime();
-            cout << "------------------------" << endl;
-            cout << "epoch " << epoch<<", sampling time "<<timer.getElapsedTime()<< " secs" << endl;
-
-            int batch=0;
-//            cout << "**************" << endl;
-//            cout << "Batch: " << batch<<endl;
-//            cout << "Bucket distribution: free count:"<<batch_assigner.get_free_count()<<endl;
-//            cout<<"Samples in each bucket: ";
-//            for(auto& b:batch_assigner.get_buckets()){
-//                cout<<b.size()<<" ";
-//            }
-//            cout<<endl;
-//            cout<<"Entities in each bucket: ";
-//            for(auto& b:batch_assigner.get_buckets()){
-//                cout<<b.entity_count()<<" ";
-//            }
-//            cout<<endl;
-            //allocate samples and update in parallel
-            violations = 0;
-            loss = 0;
-            timer.start();
-
-            for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
-
-                computation_thread_pool->schedule(std::bind([&](const int thread_index) {
-                    //Allocate samples from each bucket
-                    const auto& bucket=batch_assigner.get_buckets()[thread_index];
-                    //Call update functions
-                    for(auto& sample:bucket.get_samples()){
                         update(sample);
                     }
+
                 }, thread_index));
             }
-            computation_thread_pool->wait();
-
-            while(!batch_assigner.is_finished()){
-                ++batch;
-                //assign next batch
-                batch_assigner.next_batch();
-
-//                cout << "**************" << endl;
-//                cout << "Batch: " << batch<<endl;
-//                cout << "Bucket distribution: free count:"<<batch_assigner.get_free_count()<<endl;
-//                cout<<"Samples in each bucket: ";
-//                for(auto& b:batch_assigner.get_buckets()){
-//                    cout<<b.size()<<" ";
-//                }
-//                cout<<endl;
-//                cout<<"Entities in each bucket: ";
-//                for(auto& b:batch_assigner.get_buckets()){
-//                    cout<<b.entity_count()<<" ";
-//                }
-//                cout<<endl;
-
-                //initiate next round
-                for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
-                    computation_thread_pool->schedule(std::bind([&](const int thread_index) {
-                        //Allocate samples from each bucket
-                        const auto& bucket=batch_assigner.get_buckets()[thread_index];
-                        //Call update functions
-                        for(auto& sample:bucket.get_samples()){
-                            //cout<<"thread "<<std::this_thread::get_id()<<": updating\n";
-                            update(sample);
-                        }
-                    }, thread_index));
-                }
-                computation_thread_pool->wait();
-            }
-
             computation_thread_pool->wait();
 
             timer.stop();
 
             total_time += timer.getElapsedTime();
 
-            cout  << "training time " << timer.getElapsedTime() << " secs" << endl;
+            cout << "------------------------" << endl;
+
+            cout << "epoch " << epoch << ", time " << timer.getElapsedTime() << " secs" << endl;
 
             cout << "violations: " << violations << endl;
-
-//            if (violations<40000){
-//                parameter->step_size=0.01;
-//            }
-//
-//            if (violations<30000){
-//                parameter->step_size=0.005;
-//            }
-//            if (violations<25000){
-//                parameter->step_size=0.0025;
-//            }
 
             if(parameter->show_loss) {
 
@@ -222,6 +133,9 @@ protected:
     int violations=0;
     value_type loss=0;
     int block_size;
+
+    std::mutex* A_locks;
+    std::mutex* R_locks;
 
     value_type *rescalA;//DenseMatrix, UNSAFE!
     value_type *rescalR;//vector<DenseMatrix>, UNSAFE!
@@ -270,6 +184,40 @@ protected:
     }
 
     void update(const Sample &sample) {
+        set<int> to_lock;
+        to_lock.insert(sample.p_obj);
+        to_lock.insert(sample.p_sub);
+        to_lock.insert(sample.n_obj);
+        to_lock.insert(sample.n_sub);
+
+        vector<std::unique_lock<std::mutex>> locks;
+        for(auto l:to_lock) {
+            locks.emplace_back(A_locks[l], std::defer_lock);
+        }
+        locks.emplace_back(R_locks[sample.relation_id],std::defer_lock);
+        switch (locks.size())
+        {
+            case 0:
+                break;
+            case 1:
+                locks.front().lock();
+                break;
+            case 2:
+                std::lock(locks[0], locks[1]);
+                break;
+            case 3:
+                std::lock(locks[0], locks[1], locks[2]);
+                break;
+            case 4:
+                std::lock(locks[0], locks[1], locks[2], locks[3]);
+                break;
+            case 5:
+                std::lock(locks[0], locks[1], locks[2], locks[3], locks[4]);
+                break;
+            default:
+                throw "oops";
+        }
+
         //cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
         value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR, parameter);
         value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR, parameter);
@@ -302,7 +250,7 @@ protected:
             //Vec A_grad = ptr->second - parameter.lambdaA * row(rescalA, ptr->first);
 
             for (int i = 0; i < parameter->dimension; ++i) {
-                A_grad[i] = ptr->second[i] - parameter->lambdaA * rescalA[ptr->first * parameter->dimension + i];
+                A_grad[i] = -ptr->second[i] - parameter->lambdaA * rescalA[ptr->first * parameter->dimension + i];
             }
 
             update_grad(rescalA + parameter->dimension * ptr->first, A_grad,
@@ -490,8 +438,8 @@ protected:
 
         for (int i = 0; i < parameter->dimension; i++) {
             for (int j = 0; j < parameter->dimension; j++) {
-                grad4R[i * parameter->dimension + j] = positive_score*sigmoid(-grad4R[i * parameter->dimension + j])
-                                                       -negative_score*sigmoid(-grad4RN[i * parameter->dimension + j])
+                grad4R[i * parameter->dimension + j] = -positive_score*sigmoid(-grad4R[i * parameter->dimension + j])
+                +negative_score*sigmoid(-grad4RN[i * parameter->dimension + j])
                         -parameter->lambdaR * R_k[i * parameter->dimension + j];
             }
         }
@@ -505,6 +453,8 @@ public:
         this->data=&data;
         computation_thread_pool = new pool(parameter.num_of_thread);
         block_size=this->data->num_of_entity/(parameter.num_of_thread*3+3)+1;
+        A_locks=new mutex[data.num_of_entity];
+        R_locks=new mutex[data.num_of_relation];
     }
 
     ~RESCAL_NLL() {
