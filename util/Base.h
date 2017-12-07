@@ -20,6 +20,7 @@
 #include <mkl.h>
 #include <mkl_vml.h>
 #include <array>
+#include <cmath>
 
 using std::cout;
 using std::cerr;

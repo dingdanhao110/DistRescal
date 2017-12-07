@@ -184,6 +184,7 @@ protected:
     }
 
     void update(const Sample &sample) {
+        //cout<<"Entering update\n";
         set<int> to_lock;
         to_lock.insert(sample.p_obj);
         to_lock.insert(sample.p_sub);
@@ -225,9 +226,9 @@ protected:
         value_type p_pre = 1;
         value_type n_pre = 1;
 
-        if (positive_score - negative_score >= parameter->margin) {
-            return;
-        }
+//        if (positive_score - negative_score >= parameter->margin) {
+//            return;
+//        }
         if (positive_score - negative_score < parameter->margin) {
             violations++;
         }
@@ -246,12 +247,6 @@ protected:
 
         value_type *A_grad = new value_type[parameter->dimension];
         for (auto ptr = grad4A_map.begin(); ptr != grad4A_map.end(); ptr++) {
-
-            //Vec A_grad = ptr->second - parameter.lambdaA * row(rescalA, ptr->first);
-
-            for (int i = 0; i < parameter->dimension; ++i) {
-                A_grad[i] = -ptr->second[i] - parameter->lambdaA * rescalA[ptr->first * parameter->dimension + i];
-            }
 
             update_grad(rescalA + parameter->dimension * ptr->first, A_grad,
                         rescalA_G + parameter->dimension * ptr->first,
@@ -371,9 +366,11 @@ protected:
             }
         }
 
+
         for(auto& pair: grad4A_map){
             for (int i = 0; i < parameter->dimension; ++i) {
-                pair.second[i]= positive_score*sigmoid( -pair.second[i]);
+                pair.second[i]= sigmoid(-positive_score)*( pair.second[i])
+                                -parameter->lambdaA * rescalA[pair.first * parameter->dimension + i];
             }
         }
 
@@ -382,12 +379,14 @@ protected:
             if(ptr==grad4A_map.end()){
                 grad4A_map[pair.first]=new value_type[parameter->dimension];
                 for (int i = 0; i < parameter->dimension; ++i) {
-                    grad4A_map[pair.first][i] = -negative_score*sigmoid(-grad4AN_map[pair.first][i]);
+                    grad4A_map[pair.first][i] = -sigmoid(negative_score)*(grad4AN_map[pair.first][i])
+                                                ;
                 }
             }
             else{
                 for (int i = 0; i < parameter->dimension; ++i) {
-                    grad4A_map[pair.first][i] += -negative_score*sigmoid(-grad4AN_map[pair.first][i]);
+                    grad4A_map[pair.first][i] += -sigmoid(negative_score)*(grad4AN_map[pair.first][i])
+                                                 ;
                 }
             }
         }
@@ -438,8 +437,8 @@ protected:
 
         for (int i = 0; i < parameter->dimension; i++) {
             for (int j = 0; j < parameter->dimension; j++) {
-                grad4R[i * parameter->dimension + j] = -positive_score*sigmoid(-grad4R[i * parameter->dimension + j])
-                +negative_score*sigmoid(-grad4RN[i * parameter->dimension + j])
+                grad4R[i * parameter->dimension + j] = sigmoid(-positive_score)*(grad4R[i * parameter->dimension + j])
+                -sigmoid(negative_score)*(grad4RN[i * parameter->dimension + j])
                         -parameter->lambdaR * R_k[i * parameter->dimension + j];
             }
         }
