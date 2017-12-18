@@ -226,9 +226,9 @@ protected:
         value_type p_pre = 1;
         value_type n_pre = 1;
 
-//        if (positive_score - negative_score >= parameter->margin) {
-//            return;
-//        }
+        if (positive_score - negative_score >= parameter->margin) {
+            return;
+        }
         if (positive_score - negative_score < parameter->margin) {
             violations++;
         }
