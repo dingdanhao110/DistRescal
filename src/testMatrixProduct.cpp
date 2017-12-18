@@ -2,6 +2,18 @@
 #include "../util/Base.h"
 
 int main(int argc, char **argv) {
+    array<int, 3> myints = {2,1,2};
+
+    std::sort (myints.begin(),myints.begin()+3);
+
+    std::cout << "The possible permutations with 3 elements:\n";
+    do {
+        std::cout << myints[0] << ' ' << myints[1] << ' ' << myints[2] << '\n';
+    } while ( std::next_permutation(myints.begin(),myints.begin()+3) );
+
+    std::cout << "After loop: " << myints[0] << ' ' << myints[1] << ' ' << myints[2] << '\n';
+
+
     // 1: A * B
     double A[] = {1, 0, 2,
                   -1, 3, 1};

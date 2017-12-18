@@ -89,7 +89,6 @@ public:
             cout << "------------------------" << endl;
             cout << "epoch " << epoch<<", sampling time "<<timer.getElapsedTime()<< " secs" << endl;
 
-            //TODO: partition samples into num_of_thread buckets!!!
             cout << "Bucket distribution: free count:"<<bucket_assigner.get_free_count()<<endl;
             cout<<"Samples in each bucket: ";
             for(auto& b:bucket_assigner.get_buckets()){
@@ -101,25 +100,30 @@ public:
                 cout<<b.entity_count()<<" ";
             }
             cout<<endl;
+            cout<<"Conflicting Entities: ";
+            for(auto& count:bucket_assigner.cal_conflicts()){
+                cout<<count<<" ";
+            }
+            cout<<endl;
 
             //allocate samples and update in parallel
             violations = 0;
             loss = 0;
             timer.start();
 
-//            for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
-//
-//                computation_thread_pool->schedule(std::bind([&](const int thread_index) {
-//                    //TODO: Allocate samples from each bucket
-//
-//                    //TODO: Call update functions
-//
-//
-//
-//                }, thread_index));
-//            }
-//
-//            computation_thread_pool->wait();
+            for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
+
+                computation_thread_pool->schedule(std::bind([&](const int thread_index) {
+                    //Allocate samples from each bucket
+                    const auto& bucket=bucket_assigner.get_buckets()[thread_index];
+                    //Call update functions
+                    for(auto& sample:bucket.get_samples()){
+                        update(sample);
+                    }
+                }, thread_index));
+            }
+
+            computation_thread_pool->wait();
 
             timer.stop();
 

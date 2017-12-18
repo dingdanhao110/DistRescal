@@ -19,6 +19,8 @@
 #include <chrono>
 #include <mkl.h>
 #include <mkl_vml.h>
+#include <array>
+#include <cmath>
 
 using std::cout;
 using std::cerr;
@@ -35,6 +37,7 @@ using std::map;
 using std::unordered_map;
 using std::unordered_set;
 using std::to_string;
+using std::array;
 
 ////////////////// Boost //////////////////////
 
