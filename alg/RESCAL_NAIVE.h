@@ -51,7 +51,7 @@ protected:
         this->current_epoch = 1;
 
         rescalA = new value_type[data->num_of_entity * parameter->dimension];
-        rescalR = new value_type [data->num_of_relation * parameter->dimension * parameter->dimension];
+        rescalR = new value_type[data->num_of_relation * parameter->dimension * parameter->dimension];
 
         init_G(parameter->dimension);
 
@@ -77,14 +77,18 @@ protected:
 
     void update(const Sample &sample) {
 
-        value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR, parameter);
-        value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR, parameter);
+        value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR,
+                                                     parameter);
+        value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR,
+                                                     parameter);
 
         value_type p_pre = 1;
         value_type n_pre = 1;
 
-        if (positive_score - negative_score >= parameter->margin) {
-            return;
+        if (parameter->margin_on) {
+            if (positive_score - negative_score >= parameter->margin) {
+                return;
+            }
         }
 
         if (positive_score - negative_score < parameter->margin) {
@@ -120,7 +124,7 @@ protected:
         delete[] A_grad;//cout<<"Free A-grd\n";
         delete[] grad4R;//cout<<"Free grad4R\n";
 
-        for(auto pair:grad4A_map){
+        for (auto pair:grad4A_map) {
             delete[] pair.second;
         }
         //cout<<"Free grad4A_map\n";
@@ -141,11 +145,11 @@ protected:
 
 protected:
 
-    void update_4_A(const Sample &sample, unordered_map<int, value_type*> &grad4A_map, const value_type p_pre,
+    void update_4_A(const Sample &sample, unordered_map<int, value_type *> &grad4A_map, const value_type p_pre,
                     const value_type n_pre) {
         //cout<<"Entering update4A\n";
         //DenseMatrix &R_k = rescalR[sample.relation_id];
-        value_type * R_k = rescalR + sample.relation_id * parameter->dimension * parameter->dimension;
+        value_type *R_k = rescalR + sample.relation_id * parameter->dimension * parameter->dimension;
 
         //Vec p_tmp1 = prod(R_k, row(rescalA, sample.p_obj));
         value_type *p_tmp1 = new value_type[parameter->dimension];
@@ -231,10 +235,10 @@ protected:
             }
         }
 
-        delete [] p_tmp1;
-        delete [] p_tmp2;
-        delete [] n_tmp1;
-        delete [] n_tmp2;
+        delete[] p_tmp1;
+        delete[] p_tmp2;
+        delete[] n_tmp1;
+        delete[] n_tmp2;
         //cout<<"Exiting update4A\n";
     }
 
@@ -275,7 +279,8 @@ protected:
     }
 
 public:
-    explicit RESCAL_NAIVE<OptimizerType>(Parameter &parameter, Data &data) : MarginBasedOptimizer<OptimizerType>(parameter, data) {}
+    explicit RESCAL_NAIVE<OptimizerType>(Parameter &parameter, Data &data) : MarginBasedOptimizer<OptimizerType>(
+            parameter, data) {}
 
     ~RESCAL_NAIVE() {
         delete[] rescalA;

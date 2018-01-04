@@ -26,6 +26,7 @@ public:
     value_type lambdaA; // regularization weight
     value_type lambdaR; // regularization weight
     int dimension;
+    bool margin_on=1; //true: use margin update.
 
     string optimization;
 
@@ -41,6 +42,7 @@ public:
         ss << "lambdaA: " << lambdaA << endl;
         ss << "lambdaR: " << lambdaR << endl;
         ss << "margin: " << margin << endl;
+        ss << "using margin update: "<<margin_on<<endl;
         ss << "step_size: " << step_size << endl;
         ss << "optimization: " << optimization << endl;
         if (optimization == "adadelta") {
