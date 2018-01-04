@@ -267,8 +267,14 @@ protected:
         //cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
         value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR, parameter);
         value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR, parameter);
-        if (positive_score - negative_score >= parameter->margin) {
-            return;
+        if (parameter->margin_on) {
+            if (positive_score - negative_score >= parameter->margin) {
+                return;
+            }
+        }
+
+        if (positive_score - negative_score < parameter->margin) {
+            violations++;
         }
 
         value_type p_pre = 1;
