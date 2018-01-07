@@ -10,6 +10,8 @@
 1
 --margin_on
 1
+--pre_its
+128
 --epoch
 2000
 --p_epoch

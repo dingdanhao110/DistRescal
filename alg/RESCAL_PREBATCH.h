@@ -54,43 +54,49 @@ public:
                                                 std::vector<vector<queue<int>>>(parameter->num_of_thread,
                                                                            vector<queue<int>>(0) ));
         Samples samples(data,parameter);
-        PreBatch_assigner assigner(parameter->num_of_thread,samples,plan);
+        vector<PreBatch_assigner> assigners(parameter->num_of_thread,PreBatch_assigner(parameter->num_of_thread,samples,plan));
 
         for(int round=0;round<max_round;++round){
-            int start_epoch = round*parameter->num_of_pre_its;
-            int end_epoch = std::min(start_epoch + parameter->num_of_pre_its, parameter->epoch);
+            cout<<"Round "<<round<<": "<<endl;
+            cout<<"Preassign starts\n";
+            int start_epoch = 1+round*parameter->num_of_pre_its;
+            int end_epoch = std::min(start_epoch + parameter->num_of_pre_its, parameter->epoch+1);
 
             timer.start();
             samples.gen_samples(computation_thread_pool);
-            assigner.clean_up();
-
+            for(auto& assigner:assigners) {
+                assigner.clean_up();
+            }
+            cout<<"Pivot\n";
             int wl = (end_epoch-start_epoch-1)/parameter->num_of_thread+1;
-
+            cout<<start_epoch<<" "<<end_epoch<<" "<<wl<<endl;
             for(int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++){
 
                 computation_thread_pool->schedule(std::bind([&](const int thread_index) {
                     int start = thread_index * wl;
                     int end = std::min(start+wl, end_epoch-start_epoch);
+                    cout<<start<<" "<<end<<endl;
 
                     for (int n = start; n < end; n++) {
-                        assigner.assign_for_iteration(n);
+                        assigners[thread_index].assign_for_iteration(n);
                     }
                 }, thread_index));
             }
             computation_thread_pool->wait();
 
             timer.stop();
+            cout<<"Preassign ends\n";
             assigner_time+=timer.getElapsedTime();
             total_time+=timer.getElapsedTime();
 
             for(int epoch=start_epoch;epoch<end_epoch;++epoch){
                 //TODO: update
-
                 violations = 0;
                 //Sample all training data
                 timer.start();
 
-                const int max_batch=plan[epoch][0].size();
+                int current_epoch=epoch-start_epoch;
+                const int max_batch=plan[current_epoch][0].size();
                 if(!max_batch){cerr<<"Error at Epoch:"<<epoch<<endl;exit(-1);}
 
                 //TODO: Replace with prebatch assigner
@@ -99,11 +105,11 @@ public:
 
                         computation_thread_pool->schedule(std::bind([&](const int thread_index) {
 
-                            queue<int>& queue = plan[epoch][thread_index][batch];
+                            queue<int>& queue = plan[current_epoch][thread_index][batch];
                             while(!queue.empty()) {
                                 int index = queue.front();
                                 queue.pop();
-                                Sample sample = samples.get_sample(epoch, index);
+                                Sample sample = samples.get_sample(current_epoch, index);
                                 update(sample);
                             }
                         }, thread_index));

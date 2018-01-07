@@ -80,6 +80,10 @@ void PreBatch_assigner::assign_for_iteration(int it) {
     for(int i: indices){
         current_queue.push(i);
     }
+    for(int i=0;i<buckets.size();++i){
+        sample_count[i]=0;
+        plan[it][i].push_back(queue<int>());
+    }
 
     while(true){
         if(current_queue.empty()){
