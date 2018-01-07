@@ -32,7 +32,9 @@ set(alg
     alg/MarginBasedOptimizer.h
     alg/RESCAL_LOCK.h
     alg/RESCAL_NOLOCK.h
-    alg/Optimizer.h alg/RESCAL_NOLOCK.h alg/RESCAL_BLOCK.h alg/RESCAL_BATCH.h alg/RESCAL_POS.h alg/RESCAL_NLL.h alg/RESCAL_ASYNC.h)
+    alg/Optimizer.h alg/RESCAL_NOLOCK.h alg/RESCAL_BLOCK.h alg/RESCAL_BATCH.h alg/RESCAL_POS.h alg/RESCAL_NLL.h alg/RESCAL_ASYNC.h
+        alg/RESCAL_PREBATCH.h
+        alg/PreBatchAssigner.h)
 
 set(util
     util/Monitor.h

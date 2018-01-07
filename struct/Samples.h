@@ -5,7 +5,7 @@
 #ifndef DISTRESCAL_SAMPLES_H
 #define DISTRESCAL_SAMPLES_H
 
-#include "Base.h"
+#include "../util/Base.h"
 #include "Sample.h"
 #include "../util/Parameter.h"
 #include "../util/Data.h"

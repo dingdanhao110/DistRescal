@@ -37,6 +37,15 @@ public:
     void assign_for_iteration(int it);
 
     inline bool is_intersect(Sample& sample,const set<int>& entities)const;
+
+    void clean_up(){
+        for(auto& its:plan){
+            for(auto& thrds:its){
+                thrds.resize(0);
+            }
+        }
+    }
+
 };
 
 bool PreBatch_assigner::is_intersect(Sample &sample, const set<int> &entities) const {
@@ -66,7 +75,7 @@ void PreBatch_assigner::assign_for_iteration(int it) {
     int batch = 0;//current batch #
     queue<int> current_queue;
     queue<int> next_batch;
-    vector<int> bucket_size(buckets.size());
+    vector<int> sample_count(buckets.size());
 
     for(int i: indices){
         current_queue.push(i);
@@ -81,8 +90,10 @@ void PreBatch_assigner::assign_for_iteration(int it) {
                 //finished
                 break;
             }
-            for(auto& i:bucket_size){
-                i=0;
+
+            for(int i=0;i<buckets.size();++i){
+                sample_count[i]=0;
+                plan[it][i].push_back(queue<int>());
             }
         }
 
@@ -117,7 +128,7 @@ void PreBatch_assigner::assign_for_iteration(int it) {
             buckets[to_insert].insert(sample.p_sub);
             buckets[to_insert].insert(sample.n_sub);
 
-            ++bucket_size[to_insert];
+            ++sample_count[to_insert];
             continue;
         }
 
@@ -126,8 +137,8 @@ void PreBatch_assigner::assign_for_iteration(int it) {
         int min_size = std::numeric_limits<int>::max();
         to_insert = -1;
         for (int i = 0;i < buckets.size();++i) {
-            if (bucket_size[i] < min_size) {
-                min_size = bucket_size[i];
+            if (sample_count[i] < min_size) {
+                min_size = sample_count[i];
                 to_insert = i;
             }
         }
@@ -137,7 +148,7 @@ void PreBatch_assigner::assign_for_iteration(int it) {
         buckets[to_insert].insert(sample.p_sub);
         buckets[to_insert].insert(sample.n_sub);
 
-        ++bucket_size[to_insert];
+        ++sample_count[to_insert];
     }
 }
 

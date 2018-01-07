@@ -47,16 +47,41 @@ public:
         int workload = data->num_of_training_triples / parameter->num_of_thread;
 
         value_type total_time = 0.0;
-
+        value_type assigner_time=0.0;
         int max_round = 1+ (parameter->epoch-1) / parameter->num_of_pre_its;
+
+        vector<vector<vector<queue<int>>>> plan(parameter->num_of_pre_its,
+                                                std::vector<vector<queue<int>>>(parameter->num_of_thread,
+                                                                           vector<queue<int>>(0) ));
+        Samples samples(data,parameter);
+        PreBatch_assigner assigner(parameter->num_of_thread,samples,plan);
 
         for(int round=0;round<max_round;++round){
             int start_epoch = round*parameter->num_of_pre_its;
             int end_epoch = std::min(start_epoch + parameter->num_of_pre_its, parameter->epoch);
 
-            for(int epoch=start_epoch;epoch<end_epoch;++epoch){
-                //TODO: pre assign
+            timer.start();
+            samples.gen_samples(computation_thread_pool);
+            assigner.clean_up();
+
+            int wl = (end_epoch-start_epoch-1)/parameter->num_of_thread+1;
+
+            for(int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++){
+
+                computation_thread_pool->schedule(std::bind([&](const int thread_index) {
+                    int start = thread_index * wl;
+                    int end = std::min(start+wl, end_epoch-start_epoch);
+
+                    for (int n = start; n < end; n++) {
+                        assigner.assign_for_iteration(n);
+                    }
+                }, thread_index));
             }
+            computation_thread_pool->wait();
+
+            timer.stop();
+            assigner_time+=timer.getElapsedTime();
+            total_time+=timer.getElapsedTime();
 
             for(int epoch=start_epoch;epoch<end_epoch;++epoch){
                 //TODO: update
@@ -65,81 +90,39 @@ public:
                 //Sample all training data
                 timer.start();
 
+                const int max_batch=plan[epoch][0].size();
+                if(!max_batch){cerr<<"Error at Epoch:"<<epoch<<endl;exit(-1);}
+
                 //TODO: Replace with prebatch assigner
+                for(int  batch=0;batch<max_batch;++batch) {
+                    for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
 
-                Batch_assigner batch_assigner(parameter->num_of_thread);
-                vector<Sample> training_samples(0);
-                training_samples.reserve(data->num_of_training_triples);
-                std::mutex mutex_scheduler;
-                std::random_shuffle(indices.begin(), indices.end());
-                for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
+                        computation_thread_pool->schedule(std::bind([&](const int thread_index) {
 
-                    computation_thread_pool->schedule(std::bind([&](const int thread_index) {
-                        std::mt19937 *generator = new std::mt19937(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
-                        int start = thread_index * workload;
-                        int end = std::min(start + workload, data->num_of_training_triples);
-                        Sample sample;
-                        for (int n = start; n < end; n++) {
+                            queue<int>& queue = plan[epoch][thread_index][batch];
+                            while(!queue.empty()) {
+                                int index = queue.front();
+                                queue.pop();
+                                Sample sample = samples.get_sample(epoch, index);
+                                update(sample);
+                            }
+                        }, thread_index));
+                    }
 
-                        }
-                    }, thread_index));
+                    computation_thread_pool->wait();
                 }
-
-                computation_thread_pool->wait();
 
                 timer.stop();
 
                 total_time += timer.getElapsedTime();
                 cout << "------------------------" << endl;
-                cout << "epoch " << epoch<<", sampling time "<<timer.getElapsedTime()<< " secs" << endl;
-
-                int batch=0;
-
-                loss = 0;
-                timer.start();
-
-                for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
-
-                    computation_thread_pool->schedule(std::bind([&](const int thread_index) {
-                        //Allocate samples from each bucket
-                        const auto& bucket=batch_assigner.get_buckets()[thread_index];
-                        //Call update functions
-                        for(auto& sample:bucket.get_samples()){
-                            update(sample);
-                        }
-                    }, thread_index));
-                }
-                computation_thread_pool->wait();
-
-                while(!batch_assigner.is_finished()){
-                    ++batch;
-                    //assign next batch
-                    batch_assigner.next_batch();
-
-                    //initiate next batch
-                    for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
-                        computation_thread_pool->schedule(std::bind([&](const int thread_index) {
-                            //Allocate samples from each bucket
-                            const auto& bucket=batch_assigner.get_buckets()[thread_index];
-                            //Call update functions
-                            for(auto& sample:bucket.get_samples()){
-                                update(sample);
-                            }
-                        }, thread_index));
-                    }
-                    computation_thread_pool->wait();
-                }
-
-                computation_thread_pool->wait();
-
-                timer.stop();
-
-                total_time += timer.getElapsedTime();
+                cout << "epoch " << epoch<< endl;
 
                 cout  << "training time " << timer.getElapsedTime() << " secs" << endl;
 
                 cout << "violations: " << violations << endl;
 
+                loss = 0;
                 if(parameter->show_loss) {
 
                     timer.start();
