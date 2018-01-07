@@ -48,7 +48,7 @@ set(util
 
 set(struct
     struct/Triple.h
-    struct/Tuple.h struct/Sample.h struct/Bucket.h struct/Scheduler.h struct/Scheduler2.h struct/Batch.h)
+    struct/Tuple.h struct/Sample.h struct/Bucket.h struct/Scheduler.h struct/Scheduler2.h struct/Batch.h struct/Samples.h)
 
 set(threadpool
     extern/boost/threadpool.hpp)
@@ -72,3 +72,4 @@ add_executable(runRESCAL_BATCH src/runRESCAL_BATCH.cpp)
 add_executable(runRESCAL_POS src/runRESCAL_POS.cpp)
 add_executable(runRESCAL_NLL src/runRESCAL_NLL.cpp)
 add_executable(runRESCAL_ASYNC src/runRESCAL_ASYNC.cpp)
+add_executable(runRESCAL_PREBATCH src/runRESCAL_PREBATCH.cpp)

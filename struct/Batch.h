@@ -82,7 +82,7 @@ public:
     explicit Batch_assigner(int n) : buckets(n+1), num_of_bucket(n+1) {}
 
     void assign(Sample sample) {
-        //TODO..Fix balance issue..
+
         int to_insert = -1;
         for (int i = 0; i < buckets.size()-1; ++i) {
             if (buckets[i].is_intersect(sample)) {
@@ -104,13 +104,7 @@ public:
         ++free_count;
         int min_size = std::numeric_limits<int>::max();
         to_insert = -1;
-        for (
-                int i = 0;
-                i < buckets.
-
-                        size();
-
-                ++i) {
+        for (int i = 0;i < buckets.size();++i) {
             //if (buckets[i].size() < min_size) {
             if (to_insert < 0 ||
                 buckets[to_insert].entity_count() > buckets[i].entity_count()) {

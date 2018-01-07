@@ -27,7 +27,7 @@ public:
     value_type lambdaR; // regularization weight
     int dimension;
     bool margin_on=1; //true: use margin update.
-
+    int num_of_pre_its=64;//number of rounds for pre-assignment
     string optimization;
 
     string output_path;
