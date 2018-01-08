@@ -19,17 +19,19 @@ private:
     vector<vector<vector<vector<int>>>>& plan;
     //<iteration,threadid,batch,samples>
 
+    vector<int>& statistics;
     std::vector<int> indices;
 
 public:
 
 
     explicit PreBatch_assigner(int n, const Samples& s,
-                               vector<vector<vector<vector<int>>>>& p) :
+                               vector<vector<vector<vector<int>>>>& p, vector<int>& stat) :
             buckets(n),
             samples(s),
             plan(p),
-            indices(samples.num_of_train)
+            indices(samples.num_of_train),
+            statistics(stat)
     {
         std::iota(std::begin(indices), std::end(indices), 0);
     }
@@ -135,6 +137,14 @@ void PreBatch_assigner::assign_for_iteration(int it) {
         if (to_insert >= 0) {
             //buckets[to_insert].insert(sample);
 
+            if(false){//heuristics 1
+                //postpone to next batch
+                next_batch.push(index);
+                continue_flag=true;
+                continue;
+            }
+
+
             plan[it][to_insert][batch].push_back(index);
 
             buckets[to_insert].insert(sample.p_obj);
@@ -146,8 +156,18 @@ void PreBatch_assigner::assign_for_iteration(int it) {
             continue;
         }
 
+
+
         //CASE 3: can assign to all buckets
         //Greedy assign, try to balance load.
+
+        if(false){//heuristics 2
+            //postpone to next batch
+            next_batch.push(index);
+            continue_flag=true;
+            continue;
+        }
+
         int min_size = std::numeric_limits<int>::max();
         to_insert = -1;
         for (int i = 0;i < buckets.size();++i) {

@@ -56,9 +56,12 @@ public:
         Samples samples(data,parameter);
         //vector<PreBatch_assigner> assigners(parameter->num_of_thread,PreBatch_assigner(parameter->num_of_thread,samples,plan));
 
+
         for(int round=0;round<max_round;++round){
             cout<<"Round "<<round<<": "<<endl;
             cout<<"Preassign starts\n";
+            std::fill(statistics.begin(),statistics.end(),0);
+
             int start_epoch = 1+round*parameter->num_of_pre_its;
             int end_epoch = std::min(start_epoch + parameter->num_of_pre_its, parameter->epoch+1);
 
@@ -76,7 +79,7 @@ public:
                     int start = thread_index * wl;
                     int end = std::min(start+wl, end_epoch-start_epoch);
                     //cout<<start<<" "<<end<<endl;
-                    PreBatch_assigner assigner(parameter->num_of_thread,samples,plan);
+                    PreBatch_assigner assigner(parameter->num_of_thread,samples,plan,statistics);
                     assigner.clean_up();
                     for (int n = start; n < end; n++) {
                         assigner.assign_for_iteration(n);
@@ -175,7 +178,8 @@ protected:
     int current_epoch=0;
     int violations=0;
     value_type loss=0;
-    int block_size;
+    //int block_size;
+    vector<int> statistics;
 
     value_type *rescalA;//DenseMatrix, UNSAFE!
     value_type *rescalR;//vector<DenseMatrix>, UNSAFE!
@@ -240,6 +244,10 @@ protected:
         value_type p_pre = 1;
         value_type n_pre = 1;
 
+        ++statistics[sample.n_obj];
+        ++statistics[sample.n_sub];
+        ++statistics[sample.p_obj];
+        ++statistics[sample.p_sub];
 
         //DenseMatrix grad4R(parameter.rescal_D, parameter.rescal_D);
         value_type *grad4R = new value_type[parameter->dimension * parameter->dimension];
@@ -425,11 +433,11 @@ protected:
     }
 
 public:
-    explicit RESCAL_PREBATCH<OptimizerType>(Parameter &parameter, Data &data) {
+    explicit RESCAL_PREBATCH<OptimizerType>(Parameter &parameter, Data &data):statistics(data.num_of_entity,0) {
         this->parameter=&parameter;
         this->data=&data;
         computation_thread_pool = new pool(parameter.num_of_thread);
-        block_size=this->data->num_of_entity/(parameter.num_of_thread*3+3)+1;
+        //block_size=this->data->num_of_entity/(parameter.num_of_thread*3+3)+1;
     }
 
     ~RESCAL_PREBATCH() {
