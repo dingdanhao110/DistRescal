@@ -16,7 +16,7 @@ class PreBatch_assigner {
 private:
     vector<set<int>> buckets;
     const Samples& samples;
-    vector<vector<vector<queue<int>>>>& plan;
+    vector<vector<vector<vector<int>>>>& plan;
     //<iteration,threadid,batch,samples>
 
     std::vector<int> indices;
@@ -25,7 +25,7 @@ public:
 
 
     explicit PreBatch_assigner(int n, const Samples& s,
-                               vector<vector<vector<queue<int>>>>& p) :
+                               vector<vector<vector<vector<int>>>>& p) :
             buckets(n),
             samples(s),
             plan(p),
@@ -82,11 +82,16 @@ void PreBatch_assigner::assign_for_iteration(int it) {
     }
     for(int i=0;i<buckets.size();++i){
         sample_count[i]=0;
-        plan[it][i].push_back(queue<int>());
+        plan[it][i].push_back(vector<int>(0));
     }
 
+    //int p=0;
     while(true){
         if(current_queue.empty()){
+            //cout<<std::this_thread::get_id()<<": batch: "<<batch<<" sample: "<<p<<endl;
+            //cout<<std::this_thread::get_id()<<": next batch: "<<batch+1<<" samples: "<<next_batch.size()<<endl;
+            //p=0;
+
             //next batch
             ++batch;
             swap(current_queue,next_batch);
@@ -97,16 +102,19 @@ void PreBatch_assigner::assign_for_iteration(int it) {
 
             for(int i=0;i<buckets.size();++i){
                 sample_count[i]=0;
-                plan[it][i].push_back(queue<int>());
+                plan[it][i].push_back(vector<int>(0));
+                buckets[i].clear();
             }
         }
 
+        //++p;
         //fetch sample
         int index = current_queue.front();
         current_queue.pop();
         Sample sample=samples.get_sample(it,index);
 
         int to_insert = -1;//bucket to insert!
+        bool continue_flag=false;
         for (int i = 0; i < buckets.size(); ++i) {
             if (is_intersect(sample,buckets[i])) {
                 if(to_insert<0) {
@@ -116,16 +124,18 @@ void PreBatch_assigner::assign_for_iteration(int it) {
                     //CASE 1: can be assign to two buckets at the same time;
                     //postpone to next batch
                     next_batch.push(index);
+                    continue_flag=true;
                     continue;
                 }
             }
         }
+        if(continue_flag)continue;
 
         //CASE 2: Can only be assign to one bucket
         if (to_insert >= 0) {
             //buckets[to_insert].insert(sample);
 
-            plan[it][to_insert][batch].push(index);
+            plan[it][to_insert][batch].push_back(index);
 
             buckets[to_insert].insert(sample.p_obj);
             buckets[to_insert].insert(sample.n_obj);
@@ -146,7 +156,7 @@ void PreBatch_assigner::assign_for_iteration(int it) {
                 to_insert = i;
             }
         }
-        plan[it][to_insert][batch].push(index);
+        plan[it][to_insert][batch].push_back(index);
         buckets[to_insert].insert(sample.p_obj);
         buckets[to_insert].insert(sample.n_obj);
         buckets[to_insert].insert(sample.p_sub);
