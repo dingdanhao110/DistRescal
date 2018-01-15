@@ -85,7 +85,7 @@ public:
                     int start = thread_index * wl;
                     int end = std::min(start+wl, end_epoch-start_epoch);
                     //cout<<start<<" "<<end<<endl;
-                    PreBatch_assigner assigner(parameter->num_of_thread,samples,plan,statistics);
+                    PreBatch_assigner assigner(parameter->num_of_thread,samples,plan,statistics,parameter);
                     //assigner.clean_up();
                     for (int n = start; n < end; n++) {
                         assigner.assign_for_iteration(n);

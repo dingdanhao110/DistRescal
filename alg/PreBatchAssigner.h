@@ -14,11 +14,11 @@ using namespace std;
 
 class PreBatch_assigner {
 private:
-    vector<set<int>> buckets;
+    vector<unordered_map<int,int>> buckets;
     const Samples& samples;
     vector<vector<vector<vector<int>>>>& plan;
     //<iteration,threadid,batch,samples>
-
+    Parameter* parameter;
     vector<int>& statistics;
     std::vector<int> indices;
 
@@ -26,19 +26,21 @@ public:
 
 
     explicit PreBatch_assigner(int n, const Samples& s,
-                               vector<vector<vector<vector<int>>>>& p, vector<int>& stat) :
+                               vector<vector<vector<vector<int>>>>& p, vector<int>& stat,
+                                Parameter* para) :
             buckets(n),
             samples(s),
             plan(p),
             indices(samples.num_of_train),
-            statistics(stat)
+            statistics(stat),
+            parameter(para)
     {
         std::iota(std::begin(indices), std::end(indices), 0);
     }
 
     void assign_for_iteration(int it);
 
-    inline bool is_intersect(Sample& sample,const set<int>& entities)const;
+    inline bool is_intersect(Sample& sample,const unordered_map<int,int>& entities)const;
 
     void clean_up(){
         for(auto& its:plan){
@@ -48,9 +50,11 @@ public:
         }
     }
 
+    inline bool check_freq(Sample& sample, int to_insert)const;
+
 };
 
-bool PreBatch_assigner::is_intersect(Sample &sample, const set<int> &entities) const {
+bool PreBatch_assigner::is_intersect(Sample &sample, const unordered_map<int,int> &entities) const {
     if (entities.find(sample.n_obj) != entities.end()) {
         //found
         return true;
@@ -96,6 +100,7 @@ void PreBatch_assigner::assign_for_iteration(int it) {
 
             //next batch
             ++batch;
+            //cout<<batch<<endl;
             swap(current_queue,next_batch);
             if(current_queue.empty()){
                 //finished
@@ -137,20 +142,21 @@ void PreBatch_assigner::assign_for_iteration(int it) {
         if (to_insert >= 0) {
             //buckets[to_insert].insert(sample);
 
-            if(false){//heuristics 1
+            //if(check_freq(sample,to_insert)){
+            if(false){
+                //heuristics 1
                 //postpone to next batch
                 next_batch.push(index);
-                continue_flag=true;
                 continue;
             }
 
 
             plan[it][to_insert][batch].push_back(index);
 
-            buckets[to_insert].insert(sample.p_obj);
-            buckets[to_insert].insert(sample.n_obj);
-            buckets[to_insert].insert(sample.p_sub);
-            buckets[to_insert].insert(sample.n_sub);
+            buckets[to_insert][sample.p_obj]++;
+            buckets[to_insert][sample.n_obj]++;
+            buckets[to_insert][sample.p_sub]++;
+            buckets[to_insert][sample.n_sub]++;
 
             ++sample_count[to_insert];
             continue;
@@ -162,6 +168,7 @@ void PreBatch_assigner::assign_for_iteration(int it) {
         //Greedy assign, try to balance load.
 
         if(false){//heuristics 2
+            //has been updated frequently in last round
             //postpone to next batch
             next_batch.push(index);
             continue_flag=true;
@@ -177,13 +184,26 @@ void PreBatch_assigner::assign_for_iteration(int it) {
             }
         }
         plan[it][to_insert][batch].push_back(index);
-        buckets[to_insert].insert(sample.p_obj);
-        buckets[to_insert].insert(sample.n_obj);
-        buckets[to_insert].insert(sample.p_sub);
-        buckets[to_insert].insert(sample.n_sub);
+        buckets[to_insert][sample.p_obj]++;
+        buckets[to_insert][sample.n_obj]++;
+        buckets[to_insert][sample.p_sub]++;
+        buckets[to_insert][sample.n_sub]++;
 
         ++sample_count[to_insert];
     }
+}
+
+bool PreBatch_assigner::check_freq(Sample &sample, int to_insert) const {
+    //entity already assigned too many times in this batch
+    if(buckets[to_insert].find(sample.p_obj)!=buckets[to_insert].end())
+        if(buckets[to_insert].at(sample.p_obj)>=parameter->heuristic1)return true;
+    if(buckets[to_insert].find(sample.n_obj)!=buckets[to_insert].end())
+        if(buckets[to_insert].at(sample.n_obj)>=parameter->heuristic1)return true;
+    if(buckets[to_insert].find(sample.p_sub)!=buckets[to_insert].end())
+        if(buckets[to_insert].at(sample.p_sub)>=parameter->heuristic1)return true;
+    if(buckets[to_insert].find(sample.n_sub)!=buckets[to_insert].end())
+        if(buckets[to_insert].at(sample.n_sub)>=parameter->heuristic1)return true;
+    return false;
 }
 
 #endif //DISTRESCAL_PREBATCH_H
