@@ -67,12 +67,18 @@ public:
 
             timer.start();
             samples.gen_samples(computation_thread_pool);
-//            for(auto& assigner:assigners) {
-//                assigner.clean_up();
-//            }
+
             cout<<"Pivot\n";
             int wl = (end_epoch-start_epoch-1)/parameter->num_of_thread+1;
             //cout<<start_epoch<<" "<<end_epoch<<" "<<wl<<endl;
+
+            //clean up the plan table
+            for(auto& its:plan){
+                for(auto& thrds:its){
+                    thrds.resize(0);
+                }
+            }
+
             for(int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++){
 
                 computation_thread_pool->schedule(std::bind([&](const int thread_index) {
@@ -80,7 +86,7 @@ public:
                     int end = std::min(start+wl, end_epoch-start_epoch);
                     //cout<<start<<" "<<end<<endl;
                     PreBatch_assigner assigner(parameter->num_of_thread,samples,plan,statistics);
-                    assigner.clean_up();
+                    //assigner.clean_up();
                     for (int n = start; n < end; n++) {
                         assigner.assign_for_iteration(n);
                     }
