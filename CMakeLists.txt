@@ -50,7 +50,7 @@ set(util
 
 set(struct
     struct/Triple.h
-    struct/Tuple.h struct/Sample.h struct/Bucket.h struct/Scheduler.h struct/Scheduler2.h struct/Batch.h struct/Samples.h)
+    struct/Tuple.h struct/Sample.h struct/Bucket.h struct/Scheduler.h struct/Scheduler2.h struct/Batch.h struct/Samples.h struct/SHeap.h)
 
 set(threadpool
     extern/boost/threadpool.hpp)

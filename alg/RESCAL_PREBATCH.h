@@ -16,6 +16,7 @@
 #include "../util/Parameter.h"
 #include "../alg/Optimizer.h"
 #include "../alg/PreBatchAssigner.h"
+#include "../struct/SHeap.h"
 
 using namespace EvaluationUtil;
 using namespace FileUtil;
@@ -137,6 +138,8 @@ public:
 
                 cout << "violations: " << violations << endl;
 
+
+
                 loss = 0;
                 if(parameter->show_loss) {
 
@@ -170,6 +173,19 @@ public:
                 cout << "------------------------" << endl;
 
             }
+            cout<<"round "<<round<<" statistics:";
+            MyHeap heap;
+
+            for(int i=0;i<statistics.size();++i){
+                heap.push(make_pair(i,statistics[i]));
+            }
+
+            for(int i=0;i<20;++i){
+                pair<int,int> t=heap.top();
+                cout<<"("<<t.first<<","<<t.second<<") ";
+                heap.pop();
+            }
+            cout<<endl;
         }
 
         cout << "Total Training Time: " << total_time << " secs" << endl;
