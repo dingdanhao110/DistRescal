@@ -5,6 +5,7 @@
 #ifndef DISTRESCAL_RESCAL_PREBATCH_H
 #define DISTRESCAL_RESCAL_PREBATCH_H
 
+#include <fstream>
 #include "../util/Base.h"
 #include "../util/RandomUtil.h"
 #include "../util/Monitor.h"
@@ -57,7 +58,7 @@ public:
         Samples samples(data,parameter);
         //vector<PreBatch_assigner> assigners(parameter->num_of_thread,PreBatch_assigner(parameter->num_of_thread,samples,plan));
 
-
+        std::ofstream fout("round.txt");
         for(int round=0;round<max_round;++round){
             cout<<"Round "<<round<<": "<<endl;
             cout<<"Preassign starts\n";
@@ -173,19 +174,20 @@ public:
                 cout << "------------------------" << endl;
 
             }
-            cout<<"round "<<round<<" statistics:";
+
+
             MyHeap heap;
 
             for(int i=0;i<statistics.size();++i){
                 heap.push(make_pair(i,statistics[i]));
             }
-
-            for(int i=0;i<20;++i){
-                pair<int,int> t=heap.top();
-                cout<<"("<<t.first<<","<<t.second<<") ";
+            cout<<"round "<<round<<" statistics:\n";
+            while(!heap.empty()){
+                const pair<int,int>& t=heap.top();
+                fout<<t.first<<" "<<t.second<<" ";
                 heap.pop();
             }
-            cout<<endl;
+            fout<<endl;
         }
 
         cout << "Total Training Time: " << total_time << " secs" << endl;
