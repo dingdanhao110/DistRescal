@@ -12,7 +12,7 @@ for line in file:
     myList.append(line)
 #print(myList)
 
-numbers = myList[0].split(' ')
+numbers = myList[4].split(' ')
 
 i=0
 data=[]
@@ -21,7 +21,8 @@ for num in numbers:
         data.append(num)
     i=i+1
 data.sort(reverse=1)
-num_bins = 25
+
+num_bins = 15
 
 fig, ax = plt.subplots(figsize=(32, 34))
 
@@ -34,6 +35,7 @@ ax.set_xlabel('Times of appearance')
 ax.set_ylabel('Percentage')
 ax.set_title(r'Histogram of round1:')
 ax.set_xticks(bins)
+#print(bins)
 
 # Tweak spacing to prevent clipping of ylabel
 #fig.tight_layout()
