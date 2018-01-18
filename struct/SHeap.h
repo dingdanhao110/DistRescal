@@ -17,6 +17,15 @@ struct comparator_lesser_than{
     }
 };
 
+struct comparator_bigger_than{
+    bool operator() (pair<int,int> a, pair<int,int> b){
+        if(a.second>b.second)return true;
+        if(a.second<b.second)return false;
+        if(a.first<b.first)return true;
+        return false;
+    }
+};
+
 typedef std::priority_queue<pair<int,int>, vector<pair<int,int>>,comparator_lesser_than> MyHeap;
 
 

@@ -18,6 +18,7 @@
 #include "../alg/Optimizer.h"
 #include "../alg/PreBatchAssigner.h"
 #include "../struct/SHeap.h"
+#include "splitEntity.h"
 
 using namespace EvaluationUtil;
 using namespace FileUtil;
@@ -58,7 +59,8 @@ public:
         Samples samples(data,parameter);
         //vector<PreBatch_assigner> assigners(parameter->num_of_thread,PreBatch_assigner(parameter->num_of_thread,samples,plan));
 
-        std::ofstream fout("round.txt");
+        //std::ofstream fout("round.txt");
+        int split=0;
         for(int round=0;round<max_round;++round){
             cout<<"Round "<<round<<": "<<endl;
             cout<<"Preassign starts\n";
@@ -175,19 +177,26 @@ public:
 
             }
 
-
-            MyHeap heap;
+            vector<pair<int,int>> heap_vec(0);
+            heap_vec.reserve(statistics.size());
 
             for(int i=0;i<statistics.size();++i){
-                heap.push(make_pair(i,statistics[i]));
+                heap_vec.emplace_back(make_pair(i,statistics[i]));
             }
             cout<<"round "<<round<<" statistics:\n";
-            while(!heap.empty()){
-                const pair<int,int>& t=heap.top();
-                fout<<t.first<<" "<<t.second<<" ";
-                heap.pop();
+
+            sort(heap_vec.begin(),heap_vec.end(),comparator_bigger_than());
+
+            for(const auto& pair:heap_vec){
+                cout<<"("<<pair.first<<","<<pair.second<<") ";
+                //fout<<pair.first<<" "<<pair.second<<" ";
             }
-            fout<<endl;
+            cout<<endl;
+            //fout<<endl;
+
+            split=split_entity(heap_vec,*parameter);
+            cout<<"Split at "<<split<<"th entity!! # of samples passed margin: "<<heap_vec[split].second<<endl;
+            cout<<"Stat at "<<20<<"th entity!! # of samples passed margin: "<<heap_vec[20].second<<endl;
         }
 
         cout << "Total Training Time: " << total_time << " secs" << endl;
