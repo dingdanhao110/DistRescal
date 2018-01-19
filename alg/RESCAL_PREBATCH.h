@@ -60,7 +60,8 @@ public:
         //vector<PreBatch_assigner> assigners(parameter->num_of_thread,PreBatch_assigner(parameter->num_of_thread,samples,plan));
 
         //std::ofstream fout("round.txt");
-        int split=0;
+
+        unordered_set<int>freq_entities;
         for(int round=0;round<max_round;++round){
             cout<<"Round "<<round<<": "<<endl;
             cout<<"Preassign starts\n";
@@ -89,7 +90,7 @@ public:
                     int start = thread_index * wl;
                     int end = std::min(start+wl, end_epoch-start_epoch);
                     //cout<<start<<" "<<end<<endl;
-                    PreBatch_assigner assigner(parameter->num_of_thread,samples,plan,statistics,parameter);
+                    PreBatch_assigner assigner(parameter->num_of_thread,samples,plan,statistics,parameter,freq_entities);
                     //assigner.clean_up();
                     for (int n = start; n < end; n++) {
                         assigner.assign_for_iteration(n);
@@ -187,14 +188,14 @@ public:
 
             sort(heap_vec.begin(),heap_vec.end(),comparator_bigger_than());
 
-            for(const auto& pair:heap_vec){
-                cout<<"("<<pair.first<<","<<pair.second<<") ";
-                //fout<<pair.first<<" "<<pair.second<<" ";
-            }
-            cout<<endl;
+//            for(const auto& pair:heap_vec){
+//                cout<<"("<<pair.first<<","<<pair.second<<") ";
+//                //fout<<pair.first<<" "<<pair.second<<" ";
+//            }
+//            cout<<endl;
             //fout<<endl;
 
-            split=split_entity(heap_vec,*parameter);
+            int split=split_entity(heap_vec,*parameter,freq_entities);
             cout<<"Split at "<<split<<"th entity!! # of samples passed margin: "<<heap_vec[split].second<<endl;
             cout<<"Stat at "<<20<<"th entity!! # of samples passed margin: "<<heap_vec[20].second<<endl;
         }

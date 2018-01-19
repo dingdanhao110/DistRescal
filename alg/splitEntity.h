@@ -11,7 +11,7 @@
 
 //
 
-inline int split_entity(const vector<pair<int,int>>& heap_vec,const Parameter& parameter){
+inline int split_entity(const vector<pair<int,int>>& heap_vec,const Parameter& parameter,unordered_set<int>& freq_entities){
     int split=heap_vec.size()-1;
     value_type thres=parameter.threshold_freq;
 
@@ -25,21 +25,22 @@ inline int split_entity(const vector<pair<int,int>>& heap_vec,const Parameter& p
     }
 
     value_type base=(sum_square-sum*sum/size)/(size-1);
-    cout<<(sum_square-sum*sum/size)/(size-1)<<endl;
+    //cout<<(sum_square-sum*sum/size)/(size-1)<<endl;
     for(int i=0;i<heap_vec.size()-1;++i){
         sum-=heap_vec[i].second;
         sum_square-=heap_vec[i].second*heap_vec[i].second;
         --size;
         if(size>1) {
-            cout << (sum_square - sum * sum / size) / (size - 1) << " ";
-            cout << (sum_square - sum * sum / size) / (size - 1) / base << " ";
+            //cout << (sum_square - sum * sum / size) / (size - 1) << " ";
+            //cout << (sum_square - sum * sum / size) / (size - 1) / base << " ";
+            freq_entities.insert(heap_vec[i].first);
             if((sum_square - sum * sum / size) / (size - 1) / base<thres){
                 split=i;
                 break;
             }
         }
     }
-    cout<<endl;
+    //cout<<endl;
     return split;
 }
 

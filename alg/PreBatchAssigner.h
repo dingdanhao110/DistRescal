@@ -21,19 +21,22 @@ private:
     Parameter* parameter;
     vector<int>& statistics;
     std::vector<int> indices;
-
+    const unordered_set<int>& freq_entities;
+    vector<int> real_size;
 public:
 
 
     explicit PreBatch_assigner(int n, const Samples& s,
                                vector<vector<vector<vector<int>>>>& p, vector<int>& stat,
-                                Parameter* para) :
+                                Parameter* para,const unordered_set<int>& freq) :
+            freq_entities(freq),
             buckets(n),
             samples(s),
             plan(p),
             indices(samples.num_of_train),
             statistics(stat),
-            parameter(para)
+            parameter(para),
+            real_size(n,0)
     {
         std::iota(std::begin(indices), std::end(indices), 0);
     }
@@ -111,6 +114,7 @@ void PreBatch_assigner::assign_for_iteration(int it) {
                 sample_count[i]=0;
                 plan[it][i].push_back(vector<int>(0));
                 buckets[i].clear();
+                real_size[i]=0;
             }
         }
 
@@ -132,7 +136,7 @@ void PreBatch_assigner::assign_for_iteration(int it) {
                     //postpone to next batch
                     next_batch.push(index);
                     continue_flag=true;
-                    continue;
+                    break;
                 }
             }
         }
@@ -157,7 +161,11 @@ void PreBatch_assigner::assign_for_iteration(int it) {
             buckets[to_insert][sample.n_obj]++;
             buckets[to_insert][sample.p_sub]++;
             buckets[to_insert][sample.n_sub]++;
-
+            if(freq_entities.find(sample.p_obj)!=freq_entities.end()||
+                    freq_entities.find(sample.n_obj)!=freq_entities.end()||
+                    freq_entities.find(sample.p_sub)!=freq_entities.end()||
+                    freq_entities.find(sample.n_sub)!=freq_entities.end())
+                real_size[to_insert]++;
             ++sample_count[to_insert];
             continue;
         }
@@ -175,11 +183,11 @@ void PreBatch_assigner::assign_for_iteration(int it) {
             continue;
         }
 
-        int min_size = std::numeric_limits<int>::max();
+        value_type min_size = std::numeric_limits<value_type>::max();
         to_insert = -1;
         for (int i = 0;i < buckets.size();++i) {
-            if (sample_count[i] < min_size) {
-                min_size = sample_count[i];
+            if (sample_count[i]+real_size[i] < min_size) {
+                min_size = sample_count[i]+real_size[i]*parameter->est_size_coeff;
                 to_insert = i;
             }
         }
@@ -188,7 +196,11 @@ void PreBatch_assigner::assign_for_iteration(int it) {
         buckets[to_insert][sample.n_obj]++;
         buckets[to_insert][sample.p_sub]++;
         buckets[to_insert][sample.n_sub]++;
-
+        if(freq_entities.find(sample.p_obj)!=freq_entities.end()||
+           freq_entities.find(sample.n_obj)!=freq_entities.end()||
+           freq_entities.find(sample.p_sub)!=freq_entities.end()||
+           freq_entities.find(sample.n_sub)!=freq_entities.end())
+            real_size[to_insert]++;
         ++sample_count[to_insert];
     }
 }

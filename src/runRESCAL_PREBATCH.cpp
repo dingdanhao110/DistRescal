@@ -27,6 +27,8 @@ int main(int argc, char **argv) {
             ("margin", po::value<value_type>(&(parameter.margin))->default_value(2), "margin")
             ("margin_on", po::value<bool>(&(parameter.margin_on))->default_value(1), "whether use margin update")
             ("pre_its", po::value<int>(&(parameter.num_of_pre_its))->default_value(64), "number of precomputed batch assignment")
+            ("thre_freq", po::value<value_type>(&(parameter.threshold_freq))->default_value(0.5), "threshold for frequent entities")
+            ("est_size_coeff", po::value<value_type>(&(parameter.est_size_coeff))->default_value(1), "coefficient for real_size+sample_size")
             ("epoch", po::value<int>(&(parameter.epoch))->default_value(10000), "maximum training epoch")
             ("hit_rate_topk", po::value<int>(&(parameter.hit_rate_topk))->default_value(10), "hit rate@k")
             ("rho", po::value<value_type>(&(parameter.Rho))->default_value(0.9), "parameter for AdaDelta")

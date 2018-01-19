@@ -29,7 +29,8 @@ public:
     bool margin_on=1; //true: use margin update.
     int num_of_pre_its=64;//number of rounds for pre-assignment
     value_type heuristic1=100;//2000+ batches..
-    value_type threshold_freq=0.5;
+    value_type threshold_freq=0.5;//threshold for frequent entities
+    value_type est_size_coeff=1;//coefficient for real_size+sample_size
     string optimization;
 
     string output_path;
