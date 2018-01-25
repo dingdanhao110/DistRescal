@@ -216,29 +216,29 @@ protected:
     //int block_size;
     vector<int> statistics;
 
-    value_type *rescalA;//DenseMatrix, UNSAFE!
-    value_type *rescalR;//vector<DenseMatrix>, UNSAFE!
-    value_type *rescalA_G;//DenseMatrix, UNSAFE!
-    value_type *rescalR_G;//vector<DenseMatrix>, UNSAFE!
+    value_type *gradientA;//DenseMatrix, UNSAFE!
+    value_type *gradientR;//vector<DenseMatrix>, UNSAFE!
+    value_type *gradientA_G;//DenseMatrix, UNSAFE!
+    value_type *gradientR_G;//vector<DenseMatrix>, UNSAFE!
 
     value_type cal_loss() {
-        return cal_loss_single_thread(parameter, data, rescalA, rescalR);
+        return cal_loss_single_thread(parameter, data, gradientA, gradientR);
     }
 
     void init_G(const int D) {
-        rescalA_G = new value_type[data->num_of_entity * D];
-        std::fill(rescalA_G, rescalA_G + data->num_of_entity * D, 0);
+        gradientA_G = new value_type[data->num_of_entity * D];
+        std::fill(gradientA_G, gradientA_G + data->num_of_entity * D, 0);
 
-        rescalR_G = new value_type[data->num_of_relation * D * D];
-        std::fill(rescalR_G, rescalR_G + data->num_of_relation * D * D, 0);
+        gradientR_G = new value_type[data->num_of_relation * D * D];
+        std::fill(gradientR_G, gradientR_G + data->num_of_relation * D * D, 0);
     }
 
     void initialize() {
 
         this->current_epoch = 1;
 
-        rescalA = new value_type[data->num_of_entity * parameter->dimension];
-        rescalR = new value_type [data->num_of_relation * parameter->dimension * parameter->dimension];
+        gradientA = new value_type[data->num_of_entity * parameter->dimension];
+        gradientR = new value_type [data->num_of_relation * parameter->dimension * parameter->dimension];
 
         init_G(parameter->dimension);
 
@@ -246,14 +246,14 @@ protected:
 
         for (int row = 0; row < data->num_of_entity; row++) {
             for (int col = 0; col < parameter->dimension; col++) {
-                rescalA[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
+                gradientA[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
             }
         }
 
         bnd = sqrt(6) / sqrt(parameter->dimension + parameter->dimension);
 
         for (int R_i = 0; R_i < data->num_of_relation; R_i++) {
-            value_type *sub_R = rescalR + R_i * parameter->dimension * parameter->dimension;
+            value_type *sub_R = gradientR + R_i * parameter->dimension * parameter->dimension;
             for (int row = 0; row < parameter->dimension; row++) {
                 for (int col = 0; col < parameter->dimension; col++) {
                     sub_R[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
@@ -262,70 +262,11 @@ protected:
         }
     }
 
-    inline virtual value_type cal_score(const int rel_id, const int sub_id, const int obj_id, value_type *A,
-                                       value_type *R, const Parameter *parameter);
-
-    void update(const Sample &sample) {
-        //cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
-        value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR, parameter);
-        value_type negative_score = cal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR, parameter);
-        if (parameter->margin_on) {
-            if (positive_score - negative_score >= parameter->margin) {
-                return;
-            }
-        }
-
-        if (positive_score - negative_score < parameter->margin) {
-            violations++;
-        }
-
-        value_type p_pre = 1;
-        value_type n_pre = 1;
-
-        ++statistics[sample.n_obj];
-        ++statistics[sample.n_sub];
-        ++statistics[sample.p_obj];
-        ++statistics[sample.p_sub];
-
-        //DenseMatrix grad4R(parameter.rescal_D, parameter.rescal_D);
-        value_type *grad4R = new value_type[parameter->dimension * parameter->dimension];
-        unordered_map<int, value_type *> grad4A_map;
-
-        // Step 1: compute gradient descent
-        update_4_R(sample, grad4R, p_pre, n_pre);
-        update_4_A(sample, grad4A_map, p_pre, n_pre);
-
-        // Step 2: do the update
-        update_grad(rescalR + sample.relation_id * parameter->dimension * parameter->dimension, grad4R,
-                    rescalR_G + sample.relation_id * parameter->dimension * parameter->dimension,
-                    parameter->dimension * parameter->dimension, parameter);
-
-        value_type *A_grad = new value_type[parameter->dimension];
-        for (auto ptr = grad4A_map.begin(); ptr != grad4A_map.end(); ptr++) {
-
-            //Vec A_grad = ptr->second - parameter.lambdaA * row(rescalA, ptr->first);
-            //TODO: DOUBLE CHECK
-            for (int i = 0; i < parameter->dimension; ++i) {
-                A_grad[i] = ptr->second[i] - parameter->lambdaA * rescalA[ptr->first * parameter->dimension + i];
-            }
-
-            update_grad(rescalA + parameter->dimension * ptr->first, A_grad,
-                        rescalA_G + parameter->dimension * ptr->first,
-                        parameter->dimension, parameter);
-        }
-        delete[] A_grad;//cout<<"Free A-grd\n";
-        delete[] grad4R;//cout<<"Free grad4R\n";
-
-        for(auto pair:grad4A_map){
-            delete[] pair.second;
-        }
-        //cout<<"Free grad4A_map\n";
-        //cout<<"Exiting update\n";
-    }
+    virtual void update(const Sample &sample);
 
     void eval(const int epoch) {
 
-        hit_rate testing_measure = eval_hit_rate(parameter, data, rescalA, rescalR);
+        hit_rate testing_measure = eval_hit_rate(parameter, data, gradientA, gradientR);
 
         string prefix = "testing data >>> ";
 
@@ -333,13 +274,6 @@ protected:
     }
 
     void output(const int epoch) {}
-
-protected:
-
-    virtual void update_4_A(const Sample &sample, unordered_map<int, value_type*> &grad4A_map, const value_type p_pre,
-                    const value_type n_pre);
-
-    virtual void update_4_R(const Sample &sample, value_type *grad4R, const value_type p_pre, const value_type n_pre);
 
 public:
     explicit PREBATCH_OPTIMIZER<OptimizerType>(Parameter &parameter, Data &data):statistics(data.num_of_entity,0) {
@@ -350,10 +284,10 @@ public:
     }
 
     ~PREBATCH_OPTIMIZER() {
-        delete[] rescalA;
-        delete[] rescalR;
-        delete[] rescalA_G;
-        delete[] rescalR_G;
+        delete[] gradientA;
+        delete[] gradientR;
+        delete[] gradientA_G;
+        delete[] gradientR_G;
         delete computation_thread_pool;
     }
 };

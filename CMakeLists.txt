@@ -34,7 +34,7 @@ set(alg
     alg/RESCAL_NOLOCK.h
     alg/Optimizer.h alg/RESCAL_NOLOCK.h alg/RESCAL_BLOCK.h alg/RESCAL_BATCH.h alg/RESCAL_POS.h alg/RESCAL_NLL.h alg/RESCAL_ASYNC.h
         alg/RESCAL_PREBATCH.h
-        alg/PreBatchAssigner.h alg/splitEntity.h alg/Prebatch_Optimizer.h)
+        alg/PreBatchAssigner.h alg/splitEntity.h alg/Prebatch_Optimizer.h alg/TransE_Prebatch.h)
 
 set(util
     util/Monitor.h
