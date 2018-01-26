@@ -29,7 +29,7 @@ using namespace Calculator;
  * Margin based RESCAL_NOLOCK
  */
 template<typename OptimizerType>
-virtual class PREBATCH_OPTIMIZER {
+class PREBATCH_OPTIMIZER {
 public:
     /**
      * Start to train
@@ -125,7 +125,7 @@ public:
                             const vector<int>& queue = plan[current_epoch][thread_index][batch];
                             for(int index:queue) {
                                 Sample sample = samples.get_sample(current_epoch, index);
-                                update(sample);
+                                this->update(sample);
                             }
                         }, thread_index));
                     }
@@ -216,29 +216,29 @@ protected:
     //int block_size;
     vector<int> statistics;
 
-    value_type *gradientA;//DenseMatrix, UNSAFE!
-    value_type *gradientR;//vector<DenseMatrix>, UNSAFE!
-    value_type *gradientA_G;//DenseMatrix, UNSAFE!
-    value_type *gradientR_G;//vector<DenseMatrix>, UNSAFE!
+    value_type *embedA;//DenseMatrix, UNSAFE!
+    value_type *embedR;//vector<DenseMatrix>, UNSAFE!
+    value_type *embedA_G;//DenseMatrix, UNSAFE!
+    value_type *embedR_G;//vector<DenseMatrix>, UNSAFE!
 
     value_type cal_loss() {
-        return cal_loss_single_thread(parameter, data, gradientA, gradientR);
+        return cal_loss_single_thread(parameter, data, embedA, embedR);
     }
 
     void init_G(const int D) {
-        gradientA_G = new value_type[data->num_of_entity * D];
-        std::fill(gradientA_G, gradientA_G + data->num_of_entity * D, 0);
+        embedA_G = new value_type[data->num_of_entity * D];
+        std::fill(embedA_G, embedA_G + data->num_of_entity * D, 0);
 
-        gradientR_G = new value_type[data->num_of_relation * D * D];
-        std::fill(gradientR_G, gradientR_G + data->num_of_relation * D * D, 0);
+        embedR_G = new value_type[data->num_of_relation * D * D];
+        std::fill(embedR_G, embedR_G + data->num_of_relation * D * D, 0);
     }
 
     void initialize() {
 
         this->current_epoch = 1;
 
-        gradientA = new value_type[data->num_of_entity * parameter->dimension];
-        gradientR = new value_type [data->num_of_relation * parameter->dimension * parameter->dimension];
+        embedA = new value_type[data->num_of_entity * parameter->dimension];
+        embedR = new value_type [data->num_of_relation * parameter->dimension * parameter->dimension];
 
         init_G(parameter->dimension);
 
@@ -246,14 +246,14 @@ protected:
 
         for (int row = 0; row < data->num_of_entity; row++) {
             for (int col = 0; col < parameter->dimension; col++) {
-                gradientA[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
+                embedA[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
             }
         }
 
         bnd = sqrt(6) / sqrt(parameter->dimension + parameter->dimension);
 
         for (int R_i = 0; R_i < data->num_of_relation; R_i++) {
-            value_type *sub_R = gradientR + R_i * parameter->dimension * parameter->dimension;
+            value_type *sub_R = embedR + R_i * parameter->dimension * parameter->dimension;
             for (int row = 0; row < parameter->dimension; row++) {
                 for (int col = 0; col < parameter->dimension; col++) {
                     sub_R[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
@@ -262,11 +262,11 @@ protected:
         }
     }
 
-    virtual void update(const Sample &sample);
+    virtual void update(const Sample &sample)=0;
 
     void eval(const int epoch) {
 
-        hit_rate testing_measure = eval_hit_rate(parameter, data, gradientA, gradientR);
+        hit_rate testing_measure = eval_hit_rate(parameter, data, embedA, embedR);
 
         string prefix = "testing data >>> ";
 
@@ -284,10 +284,10 @@ public:
     }
 
     ~PREBATCH_OPTIMIZER() {
-        delete[] gradientA;
-        delete[] gradientR;
-        delete[] gradientA_G;
-        delete[] gradientR_G;
+        delete[] embedA;
+        delete[] embedR;
+        delete[] embedA_G;
+        delete[] embedR_G;
         delete computation_thread_pool;
     }
 };

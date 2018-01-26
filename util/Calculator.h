@@ -146,5 +146,36 @@ namespace Calculator {
         //return 1.0/(1+exp(-x));
         return 0.5 * x / (1.0 + abs(x)) + 0.5;
     }
+
+
+    inline value_type vec_len(value_type *a, const int size) {
+        value_type vec_norm = 0;
+        for (int i = 0; i < size; i++) {
+            vec_norm += a[i] * a[i];
+        }
+        vec_norm = sqrt(vec_norm);
+        return vec_norm;
+    }
+
+    inline void normalize(value_type *a, const int size) {
+        value_type vec_norm = vec_len(a, size);
+        for (int i = 0; i < size; i++) {
+            a[i] /= vec_norm;
+        }
+    }
+
+    // only normalize those with len less than one
+    inline void normalizeOne(value_type *a, const int size) {
+        value_type vec_norm = vec_len(a, size);
+        if(vec_norm > 1) {
+            for (int i = 0; i < size; i++) {
+                a[i] /= vec_norm;
+            }
+        }
+    }
+
+    inline value_type sqr(value_type x) {
+        return x * x;
+    }
 };
 #endif //CALCULATOR_H

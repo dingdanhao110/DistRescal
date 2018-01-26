@@ -31,7 +31,7 @@ public:
     value_type heuristic1=100;//2000+ batches..
     value_type threshold_freq=0.5;//threshold for frequent entities
     value_type est_size_coeff=1;//coefficient for real_size+sample_size
-    bool L1_flag=false;//Using L1 norm or L2 norm for transE
+    bool L1_flag= false;//Using L1 norm or L2 norm for transE
     string optimization;
 
     string output_path;
