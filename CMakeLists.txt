@@ -34,7 +34,7 @@ set(alg
     alg/RESCAL_NOLOCK.h
     alg/Optimizer.h alg/RESCAL_NOLOCK.h alg/RESCAL_BLOCK.h alg/RESCAL_BATCH.h alg/RESCAL_POS.h alg/RESCAL_NLL.h alg/RESCAL_ASYNC.h
         alg/RESCAL_PREBATCH.h
-        alg/PreBatchAssigner.h alg/splitEntity.h alg/Prebatch_Optimizer.h alg/TransE_Prebatch.h)
+        alg/PreBatchAssigner.h alg/splitEntity.h alg/Prebatch_Optimizer.h alg/TransE_Prebatch.h alg/Naive_Optimizer.h alg/TransE_Naive.h)
 
 set(util
     util/Monitor.h
@@ -50,7 +50,7 @@ set(util
 
 set(struct
     struct/Triple.h
-    struct/Tuple.h struct/Sample.h struct/Bucket.h struct/Scheduler.h struct/Scheduler2.h struct/Batch.h struct/Samples.h struct/SHeap.h)
+    struct/Tuple.h struct/Sample.h struct/Bucket.h struct/Scheduler.h struct/Scheduler2.h struct/Batch.h struct/Samples.h struct/SHeap.h alg/Naive_Optimizer.h)
 
 set(threadpool
     extern/boost/threadpool.hpp)
@@ -76,4 +76,5 @@ add_executable(runRESCAL_NLL src/runRESCAL_NLL.cpp)
 add_executable(runRESCAL_ASYNC src/runRESCAL_ASYNC.cpp)
 add_executable(runRESCAL_PREBATCH src/runRESCAL_PREBATCH.cpp)
 add_executable(runTRANSE_PREBATCH src/runTRANSE_PREBATCH.cpp)
+add_executable(runTRANSE_NAIVE src/runTRANSE_NAIVE.cpp)
 add_executable(testSplitEntity src/testSplitEntity.cpp)
