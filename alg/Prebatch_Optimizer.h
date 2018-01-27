@@ -264,14 +264,7 @@ protected:
 
     virtual void update(const Sample &sample)=0;
 
-    void eval(const int epoch) {
-
-        hit_rate testing_measure = eval_hit_rate(parameter, data, embedA, embedR);
-
-        string prefix = "testing data >>> ";
-
-        print_hit_rate(prefix, parameter->hit_rate_topk, testing_measure);
-    }
+    virtual void eval(const int epoch)=0;
 
     void output(const int epoch) {}
 

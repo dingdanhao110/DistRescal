@@ -23,6 +23,16 @@ public:
             PREBATCH_OPTIMIZER<OptimizerType>(parameter, data) {}
 
 private:
+
+    void eval(const int epoch) {
+
+        hit_rate testing_measure = eval_hit_rate_TransE(parameter, data, embedA, embedR);
+
+        string prefix = "testing data >>> ";
+
+        print_hit_rate(prefix, parameter->hit_rate_topk, testing_measure);
+    }
+
     inline value_type cal_transe_score(int sub_id, int obj_id, int rel_id) {
         value_type sum = 0;
         if (parameter->L1_flag) {

@@ -474,6 +474,71 @@ namespace EvaluationUtil {
 
         return measure;
     }
+
+    inline void transform_transe2rescal(const int rescal_d, Parameter *parameter, Data *data, value_type *transeA, value_type *transeR, value_type *rescalA, value_type *rescalR){
+
+        for (int entity_index = 0; entity_index < data->num_of_entity; entity_index++) {
+            value_type *rescalA_row = rescalA + entity_index * rescal_d;
+            value_type *transeA_row = transeA + entity_index * parameter->dimension;
+            for (int d = 0; d < parameter->dimension; d++) {
+                rescalA_row[d] = 1;
+            }
+
+            for (int d = parameter->dimension; d < 2 * parameter->dimension; d++) {
+                rescalA_row[d] = transeA_row[d - parameter->dimension];
+            }
+
+            rescalA_row[2 * parameter->dimension] = inner_product(transeA_row, transeA_row, parameter->dimension);
+        }
+
+        std::fill(rescalR, rescalR + data->num_of_relation * rescal_d * rescal_d, 0);
+
+        for (int rel_id = 0; rel_id < data->num_of_relation; rel_id++) {
+            value_type *RescalR_matrix = rescalR + rel_id * rescal_d * rescal_d;
+
+            value_type *transeR_row = transeR + rel_id * parameter->dimension;
+
+            RescalR_matrix[0] = - inner_product(transeR_row, transeR_row, parameter->dimension);
+
+            for (int row = 0; row < parameter->dimension; row++) {
+                *(RescalR_matrix + row * rescal_d + row + parameter->dimension) = 2 * transeR_row[row];
+            }
+
+            RescalR_matrix[2 * parameter->dimension] = -1;
+
+            for (int row = parameter->dimension; row < 2 * parameter->dimension; row++) {
+                *(RescalR_matrix + row * rescal_d + row - parameter->dimension) = -2 * transeR_row[row - parameter->dimension];
+            }
+
+            for (int row = parameter->dimension; row < 2 * parameter->dimension; row++) {
+                *(RescalR_matrix + row * rescal_d + row) = 2;
+            }
+
+            *(RescalR_matrix + 2 * parameter->dimension * rescal_d) = -1;
+        }
+
+    }
+
+    inline hit_rate eval_hit_rate_TransE(Parameter *parameter, Data *data, value_type *transeA, value_type *transeR) {
+        int rescal_d =  2 * parameter->dimension + 1;
+        value_type *rescalA = new value_type[data->num_of_entity * rescal_d];
+        value_type *rescalR = new value_type[data->num_of_relation * rescal_d * rescal_d];
+
+        transform_transe2rescal(rescal_d, parameter, data, transeA, transeR, rescalA, rescalR);
+        int original_dim = parameter->dimension;
+        parameter->dimension = rescal_d;
+
+        hit_rate result = eval_hit_rate(parameter, data, rescalA, rescalR);
+
+        delete[] rescalA;
+        delete[] rescalR;
+        cout << "rescal_d: " << rescal_d << endl;
+        parameter->dimension = original_dim;
+
+        return result;
+    }
+
+
 }
 
 #endif //EVALUATIONUTIL_H
