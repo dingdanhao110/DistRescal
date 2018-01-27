@@ -139,7 +139,6 @@ protected:
     int violations = 0;
     value_type loss = 0;
     //int block_size;
-    vector<int> statistics;
 
     value_type *embedA;//DenseMatrix, UNSAFE!
     value_type *embedR;//vector<DenseMatrix>, UNSAFE!
@@ -197,9 +196,7 @@ public:
     explicit NAIVE_OPTIMIZER<OptimizerType>(Parameter
     &parameter,
     Data &data
-    ):
-    statistics(data
-    .num_of_entity,0) {
+    ) {
         this->parameter = &parameter;
         this->data = &data;
         computation_thread_pool = new pool(parameter.num_of_thread);

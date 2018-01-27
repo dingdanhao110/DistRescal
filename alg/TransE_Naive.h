@@ -99,11 +99,6 @@ private:
             }
         }
 
-        ++statistics[sample.n_obj];
-        ++statistics[sample.n_sub];
-        ++statistics[sample.p_obj];
-        ++statistics[sample.p_sub];
-
         value_type *p_sub_vec = embedA + sample.p_sub * parameter->dimension;
         value_type *p_obj_vec = embedA + sample.p_obj * parameter->dimension;
 
