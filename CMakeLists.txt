@@ -34,7 +34,7 @@ set(alg
     alg/RESCAL_NOLOCK.h
     alg/Optimizer.h alg/RESCAL_NOLOCK.h alg/RESCAL_BLOCK.h alg/RESCAL_BATCH.h alg/RESCAL_POS.h alg/RESCAL_NLL.h alg/RESCAL_ASYNC.h
         alg/RESCAL_PREBATCH.h
-        alg/PreBatchAssigner.h alg/splitEntity.h alg/Prebatch_Optimizer.h alg/TransE_Prebatch.h alg/Naive_Optimizer.h alg/TransE_Naive.h alg/TransE_Lock.h)
+        alg/PreBatchAssigner.h alg/splitEntity.h alg/Prebatch_Optimizer.h alg/TransE_Prebatch.h alg/Naive_Optimizer.h alg/TransE_Naive.h alg/TransE_Lock.h alg/TransE_Prebatch_full.h)
 
 set(util
     util/Monitor.h
@@ -76,6 +76,7 @@ add_executable(runRESCAL_NLL src/runRESCAL_NLL.cpp)
 add_executable(runRESCAL_ASYNC src/runRESCAL_ASYNC.cpp)
 add_executable(runRESCAL_PREBATCH src/runRESCAL_PREBATCH.cpp)
 add_executable(runTRANSE_PREBATCH src/runTRANSE_PREBATCH.cpp)
+add_executable(runTRANSE_PREBATCH_FULL src/runTRANSE_PREBATCH_full.cpp)
 add_executable(runTRANSE_NAIVE src/runTRANSE_NAIVE.cpp)
 add_executable(runTRANSE_LOCK src/runTRANSE_LOCK.cpp)
 add_executable(testSplitEntity src/testSplitEntity.cpp)

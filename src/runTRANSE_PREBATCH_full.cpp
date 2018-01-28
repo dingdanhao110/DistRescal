@@ -5,7 +5,7 @@
 #include "../util/FileUtil.h"
 #include "../util/Data.h"
 #include "../util/Parameter.h"
-#include "../alg/TransE_Prebatch.h"
+#include "../alg/TransE_Prebatch_full.h"
 
 void print_info(Parameter &parameter, Data &data){
     cout << "------------------------" << endl;
@@ -90,13 +90,13 @@ int main(int argc, char **argv) {
     print_info(parameter, data);
 
     if (parameter.optimization == "sgd") {
-        TRANSE_PREBATCH<sgd> rescal_lock(parameter, data);
+        TRANSE_PREBATCH_FULL<sgd> rescal_lock(parameter, data);
         rescal_lock.train();
     } else if (parameter.optimization == "adagrad") {
-        TRANSE_PREBATCH<adagrad> rescal_lock(parameter, data);
+        TRANSE_PREBATCH_FULL<adagrad> rescal_lock(parameter, data);
         rescal_lock.train();
     } else if (parameter.optimization == "adadelta") {
-        TRANSE_PREBATCH<adadelta> rescal_lock(parameter, data);
+        TRANSE_PREBATCH_FULL<adadelta> rescal_lock(parameter, data);
         rescal_lock.train();
     } else {
         cerr << "recognized method: " << parameter.optimization << endl;
