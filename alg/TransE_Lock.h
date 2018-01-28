@@ -1,15 +1,14 @@
 //
-// Created by dhding on 1/27/18.
+// Created by dhding on 1/28/18.
 //
 
-#ifndef DISTRESCAL_TRANSE_NAIVE_H
-#define DISTRESCAL_TRANSE_NAIVE_H
-
+#ifndef DISTRESCAL_TRANSE_LOCK_H
+#define DISTRESCAL_TRANSE_LOCK_H
 
 #include "Naive_Optimizer.h"
 
 template<typename OptimizerType>
-class TRANSE_NAIVE : virtual public NAIVE_OPTIMIZER<OptimizerType> {
+class TRANSE_LOCK : virtual public NAIVE_OPTIMIZER<OptimizerType> {
     using NAIVE_OPTIMIZER<OptimizerType>::embedA_G;
     using NAIVE_OPTIMIZER<OptimizerType>::embedA;
     using NAIVE_OPTIMIZER<OptimizerType>::embedR_G;
@@ -19,11 +18,15 @@ class TRANSE_NAIVE : virtual public NAIVE_OPTIMIZER<OptimizerType> {
     using NAIVE_OPTIMIZER<OptimizerType>::violations;
     using NAIVE_OPTIMIZER<OptimizerType>::update_grad;
 public:
-    explicit TRANSE_NAIVE(Parameter &parameter, Data &data) :
-            NAIVE_OPTIMIZER<OptimizerType>(parameter, data) {}
+    explicit TRANSE_LOCK(Parameter &parameter, Data &data) :
+            NAIVE_OPTIMIZER<OptimizerType>(parameter, data) {
+        A_locks=new mutex[data.num_of_entity];
+        R_locks=new mutex[data.num_of_relation];
+    }
 
 private:
-
+    std::mutex* A_locks;
+    std::mutex* R_locks;
     void eval(const int epoch) {
 
         hit_rate testing_measure = eval_hit_rate_TransE(parameter, data, embedA, embedR);
@@ -82,7 +85,39 @@ private:
     }
 
     void update(const Sample &sample) {
+        set<int> to_lock;
+        to_lock.insert(sample.p_obj);
+        to_lock.insert(sample.p_sub);
+        to_lock.insert(sample.n_obj);
+        to_lock.insert(sample.n_sub);
 
+        vector<std::unique_lock<std::mutex>> locks;
+        for(auto l:to_lock) {
+            locks.emplace_back(A_locks[l], std::defer_lock);
+        }
+        locks.emplace_back(R_locks[sample.relation_id],std::defer_lock);
+        switch (locks.size())
+        {
+            case 0:
+                break;
+            case 1:
+                locks.front().lock();
+                break;
+            case 2:
+                std::lock(locks[0], locks[1]);
+                break;
+            case 3:
+                std::lock(locks[0], locks[1], locks[2]);
+                break;
+            case 4:
+                std::lock(locks[0], locks[1], locks[2], locks[3]);
+                break;
+            case 5:
+                std::lock(locks[0], locks[1], locks[2], locks[3], locks[4]);
+                break;
+            default:
+                throw "oops";
+        }
         bool subject_replace = (sample.n_sub != sample.p_sub); // true: subject is replaced, false: object is replaced.
 
         value_type positive_score = cal_transe_score(sample.p_sub, sample.p_obj, sample.relation_id);
@@ -190,6 +225,4 @@ private:
         delete[] x;
     }
 };
-
-
-#endif //DISTRESCAL_TRANSE_NAIVE_H
+#endif //DISTRESCAL_TRANSE_LOCK_H
