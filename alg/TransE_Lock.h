@@ -20,13 +20,14 @@ class TRANSE_LOCK : virtual public NAIVE_OPTIMIZER<OptimizerType> {
 public:
     explicit TRANSE_LOCK(Parameter &parameter, Data &data) :
             NAIVE_OPTIMIZER<OptimizerType>(parameter, data) {
-        A_locks=new mutex[data.num_of_entity];
-        R_locks=new mutex[data.num_of_relation];
+        A_locks = new mutex[data.num_of_entity];
+        R_locks = new mutex[data.num_of_relation];
     }
 
 private:
-    std::mutex* A_locks;
-    std::mutex* R_locks;
+    std::mutex *A_locks;
+    std::mutex *R_locks;
+
     void eval(const int epoch) {
 
         hit_rate testing_measure = eval_hit_rate_TransE(parameter, data, embedA, embedR);
@@ -40,11 +41,13 @@ private:
         value_type sum = 0;
         if (parameter->L1_flag) {
             for (int i = 0; i < parameter->dimension; i++) {
-                sum += abs(embedA[obj_id * parameter->dimension + i] - embedA[sub_id * parameter->dimension + i] - embedR[rel_id * parameter->dimension + i]);
+                sum += abs(embedA[obj_id * parameter->dimension + i] - embedA[sub_id * parameter->dimension + i] -
+                           embedR[rel_id * parameter->dimension + i]);
             }
         } else {
             for (int i = 0; i < parameter->dimension; i++) {
-                sum += sqr(embedA[obj_id * parameter->dimension + i] - embedA[sub_id * parameter->dimension + i] - embedR[rel_id * parameter->dimension + i]);
+                sum += sqr(embedA[obj_id * parameter->dimension + i] - embedA[sub_id * parameter->dimension + i] -
+                           embedR[rel_id * parameter->dimension + i]);
             }
         }
         return sum;
@@ -92,14 +95,12 @@ private:
         to_lock.insert(sample.n_sub);
 
         vector<std::unique_lock<std::mutex>> locks;
-        for(auto l:to_lock) {
+        for (auto l:to_lock) {
             locks.emplace_back(A_locks[l], std::defer_lock);
         }
-        locks.emplace_back(R_locks[sample.relation_id],std::defer_lock);
-        switch (locks.size())
-        {
-            case 0:
-                break;
+        locks.emplace_back(R_locks[sample.relation_id], std::defer_lock);
+
+        switch (locks.size()) {
             case 1:
                 locks.front().lock();
                 break;
@@ -142,9 +143,11 @@ private:
         value_type *rel_vec = embedR + sample.relation_id * parameter->dimension;
 
         //Vec x = 2 * (row(transeA, sample.p_obj) - row(transeA, sample.p_sub) - row(transeR, sample.relation_id));
-        value_type* x=new value_type[parameter->dimension];
-        for(int i=0;i<parameter->dimension;++i){
-            x[i] = 2 * (embedA[sample.p_obj*parameter->dimension+i]-embedA[sample.p_sub*parameter->dimension+i]-embedA[sample.relation_id*parameter->dimension+i]);
+        value_type *x = new value_type[parameter->dimension];
+        for (int i = 0; i < parameter->dimension; ++i) {
+            x[i] = 2 *
+                   (embedA[sample.p_obj * parameter->dimension + i] - embedA[sample.p_sub * parameter->dimension + i] -
+                    embedA[sample.relation_id * parameter->dimension + i]);
         }
 
         if (parameter->L1_flag) {
@@ -158,21 +161,23 @@ private:
         }
 
         update_grad(rel_vec, x,
-                    embedR_G + sample.relation_id * parameter->dimension, parameter->dimension,parameter);
+                    embedR_G + sample.relation_id * parameter->dimension, parameter->dimension, parameter);
 
         update_grad(p_sub_vec, x, embedA_G + sample.p_sub * parameter->dimension,
-                    parameter->dimension,parameter);
+                    parameter->dimension, parameter);
 
-        for(int i=0;i<parameter->dimension;++i) {
+        for (int i = 0; i < parameter->dimension; ++i) {
             x[i] = -x[i];
         }
 
         update_grad(p_obj_vec, x, embedA_G + sample.p_obj * parameter->dimension,
-                    parameter->dimension,parameter);
+                    parameter->dimension, parameter);
 
         //x = 2 * (row(transeA, sample.n_obj) - row(transeA, sample.n_sub) - row(transeR, sample.relation_id));
-        for(int i=0;i<parameter->dimension;++i){
-            x[i] = 2 * (embedA[sample.n_obj*parameter->dimension+i]-embedA[sample.n_sub*parameter->dimension+i]-embedA[sample.relation_id*parameter->dimension+i]);
+        for (int i = 0; i < parameter->dimension; ++i) {
+            x[i] = 2 *
+                   (embedA[sample.n_obj * parameter->dimension + i] - embedA[sample.n_sub * parameter->dimension + i] -
+                    embedA[sample.relation_id * parameter->dimension + i]);
         }
 
         if (parameter->L1_flag) {
@@ -189,27 +194,27 @@ private:
         if (subject_replace) {
 
             update_grad(p_obj_vec, x,
-                        embedA_G + sample.p_obj * parameter->dimension, parameter->dimension,parameter);
+                        embedA_G + sample.p_obj * parameter->dimension, parameter->dimension, parameter);
 
-            for(int i=0;i<parameter->dimension;++i) {
+            for (int i = 0; i < parameter->dimension; ++i) {
                 x[i] = -x[i];
             }
 
             update_grad(n_sub_vec, x,
-                        embedA_G + sample.n_sub * parameter->dimension, parameter->dimension,parameter);
+                        embedA_G + sample.n_sub * parameter->dimension, parameter->dimension, parameter);
 
         } else {
 
             update_grad(n_obj_vec, x,
-                        embedA_G + sample.n_obj * parameter->dimension, parameter->dimension,parameter);
-            for(int i=0;i<parameter->dimension;++i) {
+                        embedA_G + sample.n_obj * parameter->dimension, parameter->dimension, parameter);
+            for (int i = 0; i < parameter->dimension; ++i) {
                 x[i] = -x[i];
             }
             update_grad(p_sub_vec, x,
-                        embedA_G + sample.p_sub * parameter->dimension, parameter->dimension,parameter);
+                        embedA_G + sample.p_sub * parameter->dimension, parameter->dimension, parameter);
         }
         update_grad(rel_vec, x,
-                    embedR_G + sample.relation_id * parameter->dimension, parameter->dimension,parameter);
+                    embedR_G + sample.relation_id * parameter->dimension, parameter->dimension, parameter);
 
 
         normalizeOne(rel_vec, parameter->dimension);
@@ -224,5 +229,21 @@ private:
 
         delete[] x;
     }
+
+
+    void output(const int epoch) {
+
+        string output_path = parameter->output_path + "/" + to_string(epoch);
+
+        output_matrix(embedA, data->num_of_entity, parameter->dimension, "A_" + to_string(epoch) + ".dat", output_path);
+        output_matrix(embedR, data->num_of_relation, parameter->dimension, "R_" + to_string(epoch) + ".dat", output_path);
+
+        if(parameter->optimization=="adagrad" || parameter->optimization=="adadelta"){
+            output_matrix(embedA_G, data->num_of_entity, parameter->dimension, "A_G_" + to_string(epoch) + ".dat", output_path);
+            output_matrix(embedR_G, data->num_of_relation, parameter->dimension, "R_G_" + to_string(epoch) + ".dat", output_path);
+        }
+
+    }
 };
+
 #endif //DISTRESCAL_TRANSE_LOCK_H

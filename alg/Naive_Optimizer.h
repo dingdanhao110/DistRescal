@@ -190,7 +190,8 @@ protected:
 
     virtual void eval(const int epoch)=0;
 
-    void output(const int epoch) {}
+    virtual void output(const int epoch)=0;
+//    void output(const int epoch) {}
 
 public:
     explicit NAIVE_OPTIMIZER<OptimizerType>(Parameter

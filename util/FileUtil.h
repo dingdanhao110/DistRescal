@@ -44,6 +44,25 @@ namespace FileUtil {
         data_file.close();
 
     }
+
+    void output_matrix(value_type *data, const int row_num, const int col_num, const string file_name,
+                       const string output_folder) {
+
+        boost::filesystem::create_directories(output_folder);
+
+        string data_file_name = output_folder + "/" + file_name;
+
+        ofstream output(data_file_name.c_str());
+        for (int row = 0; row < row_num; row++) {
+            value_type *row_vec = data + row * col_num;
+            for (int col = 0; col < col_num; col++) {
+                output << row_vec[col] << " ";
+            }
+            output << endl;
+        }
+        output.close();
+    }
+
 }
 
 #endif //FILEUTIL_H

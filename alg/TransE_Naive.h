@@ -189,6 +189,20 @@ private:
 
         delete[] x;
     }
+
+    void output(const int epoch) {
+
+        string output_path = parameter->output_path + "/" + to_string(epoch);
+
+        output_matrix(embedA, data->num_of_entity, parameter->dimension, "A_" + to_string(epoch) + ".dat", output_path);
+        output_matrix(embedR, data->num_of_relation, parameter->dimension, "R_" + to_string(epoch) + ".dat", output_path);
+
+        if(parameter->optimization=="adagrad" || parameter->optimization=="adadelta"){
+            output_matrix(embedA_G, data->num_of_entity, parameter->dimension, "A_G_" + to_string(epoch) + ".dat", output_path);
+            output_matrix(embedR_G, data->num_of_relation, parameter->dimension, "R_G_" + to_string(epoch) + ".dat", output_path);
+        }
+
+    }
 };
 
 
