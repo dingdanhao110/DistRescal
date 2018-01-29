@@ -8,7 +8,7 @@
 #include "Naive_Optimizer.h"
 
 template<typename OptimizerType>
-class TRANSE_LOCK : virtual public NAIVE_OPTIMIZER<OptimizerType> {
+class TRANSE_LOCK : public NAIVE_OPTIMIZER<OptimizerType> {
     using NAIVE_OPTIMIZER<OptimizerType>::embedA_G;
     using NAIVE_OPTIMIZER<OptimizerType>::embedA;
     using NAIVE_OPTIMIZER<OptimizerType>::embedR_G;
@@ -53,6 +53,32 @@ private:
         return sum;
     }
 
+    void initialize() {
+
+        this->current_epoch = 1;
+
+        embedA = new value_type[data->num_of_entity * parameter->dimension];
+        embedR = new value_type[data->num_of_relation * parameter->dimension];
+
+        if(parameter->optimization=="adagrad" || parameter->optimization=="adadelta") {
+            init_G(parameter->dimension);
+        }
+
+        for (int row = 0; row < data->num_of_entity; row++) {
+            for (int col = 0; col < parameter->dimension; col++) {
+                embedA[row * parameter->dimension + col] = RandomUtil::uniform_real() * 6 / sqrt(parameter->dimension);
+            }
+        }
+
+        for (int row = 0; row < data->num_of_relation; row++) {
+            for (int col = 0; col < parameter->dimension; col++) {
+                embedR[row * parameter->dimension + col] = RandomUtil::uniform_real() * 6 / sqrt(parameter->dimension);
+            }
+
+            normalize(embedR + row * parameter->dimension, parameter->dimension);
+        }
+    }
+
     void init_G(const int D) {
         embedA_G = new value_type[data->num_of_entity * D];
         std::fill(embedA_G, embedA_G + data->num_of_entity * D, 0);
@@ -61,31 +87,7 @@ private:
         std::fill(embedR_G, embedR_G + data->num_of_relation * D, 0);
     }
 
-    void initialize() {
 
-        this->current_epoch = 1;
-
-        embedA = new value_type[data->num_of_entity * parameter->dimension];
-        embedR = new value_type[data->num_of_relation * parameter->dimension];
-
-        init_G(parameter->dimension);
-
-        value_type bnd = sqrt(6) / sqrt(data->num_of_entity + parameter->dimension);
-
-        for (int row = 0; row < data->num_of_entity; row++) {
-            for (int col = 0; col < parameter->dimension; col++) {
-                embedA[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
-            }
-        }
-
-        bnd = sqrt(6) / sqrt(data->num_of_relation + parameter->dimension);
-
-        for (int row = 0; row < data->num_of_relation; row++) {
-            for (int col = 0; col < parameter->dimension; col++) {
-                embedR[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
-            }
-        }
-    }
 
     void update(const Sample &sample) {
         set<int> to_lock;
@@ -101,9 +103,6 @@ private:
         locks.emplace_back(R_locks[sample.relation_id], std::defer_lock);
 
         switch (locks.size()) {
-            case 1:
-                locks.front().lock();
-                break;
             case 2:
                 std::lock(locks[0], locks[1]);
                 break;

@@ -149,42 +149,46 @@ protected:
         return cal_loss_single_thread(parameter, data, embedA, embedR);
     }
 
-    void init_G(const int D) {
-        embedA_G = new value_type[data->num_of_entity * D];
-        std::fill(embedA_G, embedA_G + data->num_of_entity * D, 0);
+    virtual void init_G(const int D) = 0;
 
-        embedR_G = new value_type[data->num_of_relation * D * D];
-        std::fill(embedR_G, embedR_G + data->num_of_relation * D * D, 0);
-    }
+//    void init_G(const int D) {
+//        embedA_G = new value_type[data->num_of_entity * D];
+//        std::fill(embedA_G, embedA_G + data->num_of_entity * D, 0);
+//
+//        embedR_G = new value_type[data->num_of_relation * D * D];
+//        std::fill(embedR_G, embedR_G + data->num_of_relation * D * D, 0);
+//    }
 
-    void initialize() {
+    virtual void initialize()=0;
 
-        this->current_epoch = 1;
-
-        embedA = new value_type[data->num_of_entity * parameter->dimension];
-        embedR = new value_type[data->num_of_relation * parameter->dimension * parameter->dimension];
-
-        init_G(parameter->dimension);
-
-        value_type bnd = sqrt(6) / sqrt(data->num_of_entity + parameter->dimension);
-
-        for (int row = 0; row < data->num_of_entity; row++) {
-            for (int col = 0; col < parameter->dimension; col++) {
-                embedA[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
-            }
-        }
-
-        bnd = sqrt(6) / sqrt(parameter->dimension + parameter->dimension);
-
-        for (int R_i = 0; R_i < data->num_of_relation; R_i++) {
-            value_type *sub_R = embedR + R_i * parameter->dimension * parameter->dimension;
-            for (int row = 0; row < parameter->dimension; row++) {
-                for (int col = 0; col < parameter->dimension; col++) {
-                    sub_R[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
-                }
-            }
-        }
-    }
+//    void initialize() {
+//
+//        this->current_epoch = 1;
+//
+//        embedA = new value_type[data->num_of_entity * parameter->dimension];
+//        embedR = new value_type[data->num_of_relation * parameter->dimension * parameter->dimension];
+//
+//        init_G(parameter->dimension);
+//
+//        value_type bnd = sqrt(6) / sqrt(data->num_of_entity + parameter->dimension);
+//
+//        for (int row = 0; row < data->num_of_entity; row++) {
+//            for (int col = 0; col < parameter->dimension; col++) {
+//                embedA[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
+//            }
+//        }
+//
+//        bnd = sqrt(6) / sqrt(parameter->dimension + parameter->dimension);
+//
+//        for (int R_i = 0; R_i < data->num_of_relation; R_i++) {
+//            value_type *sub_R = embedR + R_i * parameter->dimension * parameter->dimension;
+//            for (int row = 0; row < parameter->dimension; row++) {
+//                for (int col = 0; col < parameter->dimension; col++) {
+//                    sub_R[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
+//                }
+//            }
+//        }
+//    }
 
     virtual void update(const Sample &sample)=0;
 
