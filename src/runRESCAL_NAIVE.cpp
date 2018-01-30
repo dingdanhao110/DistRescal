@@ -25,6 +25,7 @@ int main(int argc, char **argv) {
             ("lambdaR", po::value<value_type>(&(parameter.lambdaR))->default_value(0), "regularization weight for relation")
             ("step_size", po::value<value_type>(&(parameter.step_size))->default_value(0.01), "step size")
             ("margin", po::value<value_type>(&(parameter.margin))->default_value(2), "margin")
+            ("margin_on", po::value<bool>(&(parameter.margin_on))->default_value(1), "whether use margin update")
             ("epoch", po::value<int>(&(parameter.epoch))->default_value(10000), "maximum training epoch")
             ("hit_rate_topk", po::value<int>(&(parameter.hit_rate_topk))->default_value(10), "hit rate@k")
             ("rho", po::value<value_type>(&(parameter.Rho))->default_value(0.9), "parameter for AdaDelta")

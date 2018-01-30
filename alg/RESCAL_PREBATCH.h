@@ -1,10 +1,11 @@
 //
-// Created by dhding on 10/26/17.
+// Created by dhding on 9/30/17.
 //
 
-#ifndef DISTRESCAL_RESCAL_NLL_H
-#define DISTRESCAL_RESCAL_NLL_H
+#ifndef DISTRESCAL_RESCAL_PREBATCH_H
+#define DISTRESCAL_RESCAL_PREBATCH_H
 
+#include <fstream>
 #include "../util/Base.h"
 #include "../util/RandomUtil.h"
 #include "../util/Monitor.h"
@@ -15,7 +16,9 @@
 #include "../util/Calculator.h"
 #include "../util/Parameter.h"
 #include "../alg/Optimizer.h"
-#include "../struct/Batch.h"
+#include "../alg/PreBatchAssigner.h"
+#include "../struct/SHeap.h"
+#include "splitEntity.h"
 
 using namespace EvaluationUtil;
 using namespace FileUtil;
@@ -25,7 +28,7 @@ using namespace Calculator;
  * Margin based RESCAL_NOLOCK
  */
 template<typename OptimizerType>
-class RESCAL_NLL {
+class RESCAL_PREBATCH {
 public:
     /**
      * Start to train
@@ -47,77 +50,154 @@ public:
         int workload = data->num_of_training_triples / parameter->num_of_thread;
 
         value_type total_time = 0.0;
+        value_type assigner_time=0.0;
+        int max_round = 1+ (parameter->epoch-1) / parameter->num_of_pre_its;
 
-        for (int epoch = current_epoch; epoch <= parameter->epoch; epoch++) {
-            violations = 0;
-            loss = 0;
+        vector<vector<vector<vector<int>>>> plan(parameter->num_of_pre_its,
+                                                std::vector<vector<vector<int>>>(parameter->num_of_thread,
+                                                                           std::vector<vector<int>>(0,std::vector<int>(0)) ));
+        Samples samples(data,parameter);
+        //vector<PreBatch_assigner> assigners(parameter->num_of_thread,PreBatch_assigner(parameter->num_of_thread,samples,plan));
+
+        //std::ofstream fout("round.txt");
+
+        unordered_set<int>freq_entities;
+        for(int round=0;round<max_round;++round){
+            cout<<"Round "<<round<<": "<<endl;
+            cout<<"Preassign starts\n";
+            std::fill(statistics.begin(),statistics.end(),0);
+
+            int start_epoch = 1+round*parameter->num_of_pre_its;
+            int end_epoch = std::min(start_epoch + parameter->num_of_pre_its, parameter->epoch+1);
 
             timer.start();
+            samples.gen_samples(computation_thread_pool);
 
-            //Sample all training data
-            std::random_shuffle(indices.begin(), indices.end());
+            cout<<"Pivot\n";
+            int wl = (end_epoch-start_epoch-1)/parameter->num_of_thread+1;
+            //cout<<start_epoch<<" "<<end_epoch<<" "<<wl<<endl;
 
-            for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
+            //clean up the plan table
+            for(auto& its:plan){
+                for(auto& thrds:its){
+                    thrds.resize(0);
+                }
+            }
+
+            for(int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++){
 
                 computation_thread_pool->schedule(std::bind([&](const int thread_index) {
-
-                    int start = thread_index * workload;
-                    int end = std::min(start + workload, data->num_of_training_triples);
-                    Sample sample;
+                    int start = thread_index * wl;
+                    int end = std::min(start+wl, end_epoch-start_epoch);
+                    //cout<<start<<" "<<end<<endl;
+                    PreBatch_assigner assigner(parameter->num_of_thread,samples,plan,statistics,parameter,freq_entities);
+                    //assigner.clean_up();
                     for (int n = start; n < end; n++) {
-                        if(parameter->num_of_thread == 1){
-                            Sampler::random_sample(*data, sample, indices[n]);
-                        } else {
-                            Sampler::random_sample_multithreaded(*data, sample, indices[n]);
-                        }
-                        //cout<<"Thread "<<std::this_thread::get_id()<<": Work assigned"<<endl;
-                        update(sample);
+                        assigner.assign_for_iteration(n);
                     }
-
                 }, thread_index));
             }
             computation_thread_pool->wait();
 
             timer.stop();
+            cout<<"Preassign ends\n";
+            assigner_time+=timer.getElapsedTime();
+            total_time+=timer.getElapsedTime();
+            cout<<"Pre-pocessing time: "<<timer.getElapsedTime()<<endl;
 
-            total_time += timer.getElapsedTime();
-
-            cout << "------------------------" << endl;
-
-            cout << "epoch " << epoch << ", time " << timer.getElapsedTime() << " secs" << endl;
-
-            cout << "violations: " << violations << endl;
-
-            if(parameter->show_loss) {
-
+            for(int epoch=start_epoch;epoch<end_epoch;++epoch){
+                //TODO: update
+                violations = 0;
+                //Sample all training data
                 timer.start();
 
-                loss = cal_loss();
+                int current_epoch=epoch-start_epoch;
+                const int max_batch=plan[current_epoch][0].size();
+                if(!max_batch){cerr<<"Error at Epoch:"<<epoch<<endl;exit(-1);}
 
-                cout << "loss: " << loss << endl;
+                //prebatch assigner
+                for(int  batch=0;batch<max_batch;++batch) {
+                    for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
+
+                        computation_thread_pool->schedule(std::bind([&](const int thread_index) {
+
+                            const vector<int>& queue = plan[current_epoch][thread_index][batch];
+                            for(int index:queue) {
+                                Sample sample = samples.get_sample(current_epoch, index);
+                                update(sample);
+                            }
+                        }, thread_index));
+                    }
+
+                    computation_thread_pool->wait();
+                }
 
                 timer.stop();
 
-                cout << "time for computing loss: " << timer.getElapsedTime() << " secs" << endl;
+                total_time += timer.getElapsedTime();
+                cout << "------------------------" << endl;
+                cout << "epoch " << epoch<< endl;
+
+                cout  << "training time " << timer.getElapsedTime() << " secs" << endl;
+
+                cout << "violations: " << violations << endl;
+
+
+
+                loss = 0;
+                if(parameter->show_loss) {
+
+                    timer.start();
+
+                    loss = cal_loss();
+
+                    cout << "loss: " << loss << endl;
+
+                    timer.stop();
+
+                    cout << "time for computing loss: " << timer.getElapsedTime() << " secs" << endl;
+                }
+
+                if (epoch % parameter->print_epoch == 0) {
+
+                    timer.start();
+
+                    eval(epoch);
+
+                    timer.stop();
+
+                    cout << "time for evaluation: " << timer.getElapsedTime() << " secs" << endl;
+
+                }
+
+                if (epoch % parameter->output_epoch == 0) {
+                    output(epoch);
+                }
+
+                cout << "------------------------" << endl;
+
             }
 
-            if (epoch % parameter->print_epoch == 0) {
+            vector<pair<int,int>> heap_vec(0);
+            heap_vec.reserve(statistics.size());
 
-                timer.start();
-
-                eval(epoch);
-
-                timer.stop();
-
-                cout << "time for evaluation: " << timer.getElapsedTime() << " secs" << endl;
-
+            for(int i=0;i<statistics.size();++i){
+                heap_vec.emplace_back(make_pair(i,statistics[i]));
             }
+            cout<<"round "<<round<<" statistics:\n";
 
-            if (epoch % parameter->output_epoch == 0) {
-                output(epoch);
-            }
+            sort(heap_vec.begin(),heap_vec.end(),comparator_bigger_than());
 
-            cout << "------------------------" << endl;
+//            for(const auto& pair:heap_vec){
+//                cout<<"("<<pair.first<<","<<pair.second<<") ";
+//                //fout<<pair.first<<" "<<pair.second<<" ";
+//            }
+//            cout<<endl;
+            //fout<<endl;
+
+            int split=split_entity(heap_vec,*parameter,freq_entities);
+            cout<<"Split at "<<split<<"th entity!! # of samples passed margin: "<<heap_vec[split].second<<endl;
+            cout<<"Stat at "<<20<<"th entity!! # of samples passed margin: "<<heap_vec[20].second<<endl;
         }
 
         cout << "Total Training Time: " << total_time << " secs" << endl;
@@ -132,10 +212,8 @@ protected:
     int current_epoch=0;
     int violations=0;
     value_type loss=0;
-    int block_size;
-
-    std::mutex* A_locks;
-    std::mutex* R_locks;
+    //int block_size;
+    vector<int> statistics;
 
     value_type *rescalA;//DenseMatrix, UNSAFE!
     value_type *rescalR;//vector<DenseMatrix>, UNSAFE!
@@ -184,48 +262,9 @@ protected:
     }
 
     void update(const Sample &sample) {
-        //cout<<"Entering update\n";
-        set<int> to_lock;
-        to_lock.insert(sample.p_obj);
-        to_lock.insert(sample.p_sub);
-        to_lock.insert(sample.n_obj);
-        to_lock.insert(sample.n_sub);
-
-        vector<std::unique_lock<std::mutex>> locks;
-        for(auto l:to_lock) {
-            locks.emplace_back(A_locks[l], std::defer_lock);
-        }
-        locks.emplace_back(R_locks[sample.relation_id],std::defer_lock);
-        switch (locks.size())
-        {
-            case 0:
-                break;
-            case 1:
-                locks.front().lock();
-                break;
-            case 2:
-                std::lock(locks[0], locks[1]);
-                break;
-            case 3:
-                std::lock(locks[0], locks[1], locks[2]);
-                break;
-            case 4:
-                std::lock(locks[0], locks[1], locks[2], locks[3]);
-                break;
-            case 5:
-                std::lock(locks[0], locks[1], locks[2], locks[3], locks[4]);
-                break;
-            default:
-                throw "oops";
-        }
-
         //cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
         value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR, parameter);
         value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR, parameter);
-
-        value_type p_pre = 1;
-        value_type n_pre = 1;
-
         if (parameter->margin_on) {
             if (positive_score - negative_score >= parameter->margin) {
                 return;
@@ -235,13 +274,22 @@ protected:
         if (positive_score - negative_score < parameter->margin) {
             violations++;
         }
+
+        value_type p_pre = 1;
+        value_type n_pre = 1;
+
+        ++statistics[sample.n_obj];
+        ++statistics[sample.n_sub];
+        ++statistics[sample.p_obj];
+        ++statistics[sample.p_sub];
+
         //DenseMatrix grad4R(parameter.rescal_D, parameter.rescal_D);
         value_type *grad4R = new value_type[parameter->dimension * parameter->dimension];
         unordered_map<int, value_type *> grad4A_map;
 
-        // Step 1: compute gradient and compute negative log likelihood gradient.
-        update_4_R(sample, grad4R, p_pre, n_pre,positive_score,negative_score);
-        update_4_A(sample, grad4A_map, p_pre, n_pre,positive_score,negative_score);
+        // Step 1: compute gradient descent
+        update_4_R(sample, grad4R, p_pre, n_pre);
+        update_4_A(sample, grad4A_map, p_pre, n_pre);
 
         // Step 2: do the update
         update_grad(rescalR + sample.relation_id * parameter->dimension * parameter->dimension, grad4R,
@@ -250,6 +298,12 @@ protected:
 
         value_type *A_grad = new value_type[parameter->dimension];
         for (auto ptr = grad4A_map.begin(); ptr != grad4A_map.end(); ptr++) {
+
+            //Vec A_grad = ptr->second - parameter.lambdaA * row(rescalA, ptr->first);
+            //TODO: DOUBLE CHECK
+            for (int i = 0; i < parameter->dimension; ++i) {
+                A_grad[i] = ptr->second[i] - parameter->lambdaA * rescalA[ptr->first * parameter->dimension + i];
+            }
 
             update_grad(rescalA + parameter->dimension * ptr->first, A_grad,
                         rescalA_G + parameter->dimension * ptr->first,
@@ -279,12 +333,10 @@ protected:
 protected:
 
     void update_4_A(const Sample &sample, unordered_map<int, value_type*> &grad4A_map, const value_type p_pre,
-                    const value_type n_pre,const value_type positive_score,const value_type negative_score) {
+                    const value_type n_pre) {
         //cout<<"Entering update4A\n";
         //DenseMatrix &R_k = rescalR[sample.relation_id];
         value_type * R_k = rescalR + sample.relation_id * parameter->dimension * parameter->dimension;
-
-        unordered_map<int, value_type*> grad4AN_map;
 
         //Vec p_tmp1 = prod(R_k, row(rescalA, sample.p_obj));
         value_type *p_tmp1 = new value_type[parameter->dimension];
@@ -342,55 +394,31 @@ protected:
             }
         }
 
-        ptr = grad4AN_map.find(sample.n_sub);
-        if (ptr == grad4AN_map.end()) {
+        ptr = grad4A_map.find(sample.n_sub);
+        if (ptr == grad4A_map.end()) {
             //grad4A_map[sample.n_sub] = n_pre * (-n_tmp1);
-            grad4AN_map[sample.n_sub] = new value_type[parameter->dimension];
+            grad4A_map[sample.n_sub] = new value_type[parameter->dimension];
             for (int i = 0; i < parameter->dimension; ++i) {
-                grad4AN_map[sample.n_sub][i] = n_pre * (n_tmp1[i]);
+                grad4A_map[sample.n_sub][i] = n_pre * (-n_tmp1[i]);
             }
         } else {
             //grad4A_map[sample.n_sub] += n_pre * (-n_tmp1);
             for (int i = 0; i < parameter->dimension; ++i) {
-                grad4AN_map[sample.n_sub][i] += n_pre * (n_tmp1[i]);
+                grad4A_map[sample.n_sub][i] += n_pre * (-n_tmp1[i]);
             }
         }
 
-        ptr = grad4AN_map.find(sample.n_obj);
-        if (ptr == grad4AN_map.end()) {
+        ptr = grad4A_map.find(sample.n_obj);
+        if (ptr == grad4A_map.end()) {
             //grad4A_map[sample.n_obj] = n_pre * (-n_tmp2);
-            grad4AN_map[sample.n_obj] = new value_type[parameter->dimension];
+            grad4A_map[sample.n_obj] = new value_type[parameter->dimension];
             for (int i = 0; i < parameter->dimension; ++i) {
-                grad4AN_map[sample.n_obj][i] = n_pre * (n_tmp2[i]);
+                grad4A_map[sample.n_obj][i] = n_pre * (-n_tmp2[i]);
             }
         } else {
+            //grad4A_map[sample.n_obj] += n_pre * (-n_tmp2);
             for (int i = 0; i < parameter->dimension; ++i) {
-                grad4AN_map[sample.n_obj][i] += n_pre * (n_tmp2[i]);
-            }
-        }
-
-
-        for(auto& pair: grad4A_map){
-            for (int i = 0; i < parameter->dimension; ++i) {
-                pair.second[i]= sigmoid(-positive_score)*( pair.second[i])
-                                -parameter->lambdaA * rescalA[pair.first * parameter->dimension + i];
-            }
-        }
-
-        for(auto& pair: grad4AN_map){
-            ptr = grad4A_map.find(pair.first);
-            if(ptr==grad4A_map.end()){
-                grad4A_map[pair.first]=new value_type[parameter->dimension];
-                for (int i = 0; i < parameter->dimension; ++i) {
-                    grad4A_map[pair.first][i] = -sigmoid(negative_score)*(grad4AN_map[pair.first][i])
-                                                ;
-                }
-            }
-            else{
-                for (int i = 0; i < parameter->dimension; ++i) {
-                    grad4A_map[pair.first][i] += -sigmoid(negative_score)*(grad4AN_map[pair.first][i])
-                                                 ;
-                }
+                grad4A_map[sample.n_obj][i] += n_pre * (-n_tmp2[i]);
             }
         }
 
@@ -398,13 +426,10 @@ protected:
         delete [] p_tmp2;
         delete [] n_tmp1;
         delete [] n_tmp2;
-        for(auto pair:grad4AN_map){
-            delete[] pair.second;
-        }
         //cout<<"Exiting update4A\n";
     }
 
-    void update_4_R(const Sample &sample, value_type *grad4R, const value_type p_pre, const value_type n_pre,const value_type positive_score,const value_type negative_score) {
+    void update_4_R(const Sample &sample, value_type *grad4R, const value_type p_pre, const value_type n_pre) {
         //cout<<"Entering update4R\n";
         value_type *p_sub = rescalA + sample.p_sub * parameter->dimension;
         value_type *p_obj = rescalA + sample.p_obj * parameter->dimension;
@@ -415,51 +440,41 @@ protected:
 
         //grad4R.clear();
         std::fill(grad4R, grad4R + parameter->dimension * parameter->dimension, 0);
-        value_type * grad4RN = new value_type[parameter->dimension * parameter->dimension];
-        std::fill(grad4RN, grad4RN + parameter->dimension * parameter->dimension, 0);
+
 //        for (int i = 0; i < parameter->rescal_D; i++) {
 //            for (int j = 0; j < parameter->rescal_D; j++) {
 //                grad4R(i, j) += p_pre * p_sub[i] * p_obj[j] - n_pre * n_sub[i] * n_obj[j];
 //            }
 //        }
 //
-
         for (int i = 0; i < parameter->dimension; i++) {
             for (int j = 0; j < parameter->dimension; j++) {
-                grad4R[i * parameter->dimension + j] += p_pre*p_sub[i] * p_obj[j];
-            }
-        }
-        for (int i = 0; i < parameter->dimension; i++) {
-            for (int j = 0; j < parameter->dimension; j++) {
-                grad4RN[i * parameter->dimension + j] += n_pre* n_sub[i] * n_obj[j];
+                grad4R[i * parameter->dimension + j] += p_pre * p_sub[i] * p_obj[j] - n_pre * n_sub[i] * n_obj[j];
             }
         }
 
-//      grad4R += - parameter->lambdaR * rescalR[sample.relation_id];
+//        grad4R += - parameter->lambdaR * rescalR[sample.relation_id];
         value_type *R_k = rescalR + sample.relation_id * parameter->dimension * parameter->dimension;
 
         for (int i = 0; i < parameter->dimension; i++) {
             for (int j = 0; j < parameter->dimension; j++) {
-                grad4R[i * parameter->dimension + j] = sigmoid(-positive_score)*(grad4R[i * parameter->dimension + j])
-                -sigmoid(negative_score)*(grad4RN[i * parameter->dimension + j])
+                grad4R[i * parameter->dimension + j] +=
                         -parameter->lambdaR * R_k[i * parameter->dimension + j];
             }
         }
-        delete[] grad4RN;
+        //TODO: Double check.
         //cout<<"Exiting update4R\n";
     }
 
 public:
-    explicit RESCAL_NLL<OptimizerType>(Parameter &parameter, Data &data) {
+    explicit RESCAL_PREBATCH<OptimizerType>(Parameter &parameter, Data &data):statistics(data.num_of_entity,0) {
         this->parameter=&parameter;
         this->data=&data;
         computation_thread_pool = new pool(parameter.num_of_thread);
-        block_size=this->data->num_of_entity/(parameter.num_of_thread*3+3)+1;
-        A_locks=new mutex[data.num_of_entity];
-        R_locks=new mutex[data.num_of_relation];
+        //block_size=this->data->num_of_entity/(parameter.num_of_thread*3+3)+1;
     }
 
-    ~RESCAL_NLL() {
+    ~RESCAL_PREBATCH() {
         delete[] rescalA;
         delete[] rescalR;
         delete[] rescalA_G;
@@ -467,4 +482,4 @@ public:
         delete computation_thread_pool;
     }
 };
-#endif //DISTRESCAL_RESCAL_NLL_H
+#endif //DISTRESCAL_RESCAL_BATCH_H

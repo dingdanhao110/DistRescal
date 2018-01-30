@@ -1,8 +1,8 @@
 #include "../util/Base.h"
 #include "../util/FileUtil.h"
 #include "../util/Data.h"
-#include "../alg/RESCAL_LOCK.h"
 #include "../util/Parameter.h"
+#include "../alg/RESCAL_PREBATCH.h"
 
 void print_info(Parameter &parameter, Data &data){
     cout << "------------------------" << endl;
@@ -26,6 +26,9 @@ int main(int argc, char **argv) {
             ("step_size", po::value<value_type>(&(parameter.step_size))->default_value(0.01), "step size")
             ("margin", po::value<value_type>(&(parameter.margin))->default_value(2), "margin")
             ("margin_on", po::value<bool>(&(parameter.margin_on))->default_value(1), "whether use margin update")
+            ("pre_its", po::value<int>(&(parameter.num_of_pre_its))->default_value(64), "number of precomputed batch assignment")
+            ("thre_freq", po::value<value_type>(&(parameter.threshold_freq))->default_value(0.5), "threshold for frequent entities")
+            ("est_entity_coeff", po::value<value_type>(&(parameter.est_entity_coeff))->default_value(1), "coefficient for real_size+sample_size")
             ("epoch", po::value<int>(&(parameter.epoch))->default_value(10000), "maximum training epoch")
             ("hit_rate_topk", po::value<int>(&(parameter.hit_rate_topk))->default_value(10), "hit rate@k")
             ("rho", po::value<value_type>(&(parameter.Rho))->default_value(0.9), "parameter for AdaDelta")
@@ -80,13 +83,13 @@ int main(int argc, char **argv) {
     print_info(parameter, data);
 
     if (parameter.optimization == "sgd") {
-        RESCAL_LOCK<sgd> rescal_lock(parameter, data);
+        RESCAL_PREBATCH<sgd> rescal_lock(parameter, data);
         rescal_lock.train();
     } else if (parameter.optimization == "adagrad") {
-        RESCAL_LOCK<adagrad> rescal_lock(parameter, data);
+        RESCAL_PREBATCH<adagrad> rescal_lock(parameter, data);
         rescal_lock.train();
     } else if (parameter.optimization == "adadelta") {
-        RESCAL_LOCK<adadelta> rescal_lock(parameter, data);
+        RESCAL_PREBATCH<adadelta> rescal_lock(parameter, data);
         rescal_lock.train();
     } else {
         cerr << "recognized method: " << parameter.optimization << endl;

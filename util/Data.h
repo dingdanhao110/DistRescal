@@ -348,6 +348,169 @@ private:
 
         num_of_entity = entity_decoder.size();
         num_of_relation = relation_decoder.size();
+
+//        vector<string> s;
+//        string training_triples_file = "training_triples.txt";
+//
+//        for (Triple<int> &t:training_triples) {
+//            s.push_back(to_string(t.subject) + "," + to_string(t.relation) + "," + to_string(t.object));
+//        }
+//
+//        ofstream output1(training_triples_file.c_str());
+//        sort(s.begin(), s.end());
+//        for(auto os:s){
+//            output1 << os << endl;
+//        }
+//
+//        output1.close();
+//
+//        string train_rel2tuples_file = "train_rel2tuples.txt";
+//
+//        for (auto ptr = train_rel2tuples.begin(); ptr != train_rel2tuples.end(); ptr++) {
+//            for (Tuple<int> &t:ptr->second) {
+//                s.push_back(to_string(ptr->first) + "," + to_string(t.subject) + "," + to_string(t.object));
+//            }
+//        }
+//
+//        ofstream output2(train_rel2tuples_file.c_str());
+//        sort(s.begin(), s.end());
+//
+//        for(auto os:s){
+//            output2 << os << endl;
+//        }
+//        output2.close();
+//        s.clear();
+//
+//        string test_rel2tuples_file = "test_rel2tuples.txt";
+//
+//        for (auto ptr = test_rel2tuples.begin(); ptr != test_rel2tuples.end(); ptr++) {
+//            for (Tuple<int> &t:ptr->second) {
+//                s.push_back(to_string(ptr->first) + "," + to_string(t.subject) + "," + to_string(t.object));
+//            }
+//        }
+//
+//        ofstream output3(test_rel2tuples_file.c_str());
+//        sort(s.begin(), s.end());
+//
+//        for(auto os:s){
+//            output3 << os << endl;
+//        }
+//        output3.close();
+//        s.clear();
+//
+//        string valid_rel2tuples_file = "valid_rel2tuples.txt";
+//
+//        for (auto ptr = valid_rel2tuples.begin(); ptr != valid_rel2tuples.end(); ptr++) {
+//            for (Tuple<int> &t:ptr->second) {
+//                s.push_back(to_string(ptr->first) + "," + to_string(t.subject) + "," + to_string(t.object));
+//            }
+//        }
+//
+//        ofstream output4(valid_rel2tuples_file.c_str());
+//        sort(s.begin(), s.end());
+//
+//        for(auto os:s){
+//            output4 << os << endl;
+//        }
+//        output4.close();
+//        s.clear();
+//
+//        string trainSubRel2Obj_file = "trainSubRel2Obj.txt";
+//
+//        for (auto ptr = trainSubRel2Obj.begin(); ptr != trainSubRel2Obj.end(); ptr++) {
+//            for (int &t:ptr->second) {
+//                s.push_back(to_string(ptr->first.first) + "," + to_string(ptr->first.second) + "," + to_string(t));
+//            }
+//        }
+//
+//        ofstream output5(trainSubRel2Obj_file.c_str());
+//        sort(s.begin(), s.end());
+//        for(auto os:s){
+//            output5 << os << endl;
+//        }
+//        output5.close();
+//        s.clear();
+//
+//        string trainObjRel2Sub_file = "trainObjRel2Sub.txt";
+//
+//        for (auto ptr = trainObjRel2Sub.begin(); ptr != trainObjRel2Sub.end(); ptr++) {
+//            for (int &t:ptr->second) {
+//                s.push_back(to_string(ptr->first.first) + "," + to_string(ptr->first.second) + "," + to_string(t));
+//
+//            }
+//        }
+//
+//        ofstream output6(trainObjRel2Sub_file.c_str());
+//        sort(s.begin(), s.end());
+//        for(auto os:s){
+//            output6 << os << endl;
+//        }
+//        output6.close();
+//        s.clear();
+//
+//        string testSubRel2Obj_file = "testSubRel2Obj.txt";
+//        for (auto ptr = testSubRel2Obj.begin(); ptr != testSubRel2Obj.end(); ptr++) {
+//            for (int &t:ptr->second) {
+//                s.push_back(to_string(ptr->first.first) + "," + to_string(ptr->first.second) + "," + to_string(t));
+//            }
+//        }
+//
+//        ofstream output7(testSubRel2Obj_file.c_str());
+//        sort(s.begin(), s.end());
+//        for(auto os:s){
+//            output7 << os << endl;
+//        }
+//        output7.close();
+//        s.clear();
+//
+//        string testObjRel2Sub_file = "testObjRel2Sub.txt";
+//        for (auto ptr = testObjRel2Sub.begin(); ptr != testObjRel2Sub.end(); ptr++) {
+//            for (int &t:ptr->second) {
+//                s.push_back(to_string(ptr->first.first) + "," + to_string(ptr->first.second) + "," + to_string(t));
+//            }
+//        }
+//
+//        ofstream output8(testObjRel2Sub_file.c_str());
+//        sort(s.begin(), s.end());
+//        for(auto os:s){
+//            output8 << os << endl;
+//        }
+//        output8.close();
+//        s.clear();
+//
+//        string validSubRel2Obj_file = "validSubRel2Obj.txt";
+//
+//        for (auto ptr = validSubRel2Obj.begin(); ptr != validSubRel2Obj.end(); ptr++) {
+//            for (int &t:ptr->second) {
+//                s.push_back(to_string(ptr->first.first) + "," + to_string(ptr->first.second) + "," + to_string(t));
+//            }
+//        }
+//
+//        ofstream output9(validSubRel2Obj_file.c_str());
+//        sort(s.begin(), s.end());
+//        for(auto os:s){
+//            output9 << os << endl;
+//        }
+//        output9.close();
+//        s.clear();
+//
+//        string validObjRel2Sub_file = "validObjRel2Sub.txt";
+//
+//        for (auto ptr = validObjRel2Sub.begin(); ptr != validObjRel2Sub.end(); ptr++) {
+//            for (int &t:ptr->second) {
+//                s.push_back(to_string(ptr->first.first) + "," + to_string(ptr->first.second) + "," + to_string(t));
+//            }
+//        }
+//
+//        ofstream output10(validObjRel2Sub_file.c_str());
+//        sort(s.begin(), s.end());
+//        for(auto os:s){
+//            output10 << os << endl;
+//        }
+//        output10.close();
+//        s.clear();
+//
+//        exit(1);
     }
 };
 

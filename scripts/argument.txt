@@ -8,6 +8,10 @@
 200
 --margin
 1
+--margin_on
+1
+--pre_its
+128
 --epoch
 2000
 --p_epoch
@@ -38,6 +42,8 @@
 200
 --margin
 4
+--margin_on
+1
 --epoch
 2000
 --p_epoch

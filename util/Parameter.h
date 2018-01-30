@@ -26,7 +26,14 @@ public:
     value_type lambdaA; // regularization weight
     value_type lambdaR; // regularization weight
     int dimension;
-
+    bool margin_on=1; //true: use margin update.
+    int num_of_pre_its=64;//number of rounds for pre-assignment
+    value_type heuristic1=100;//2000+ batches..
+    value_type threshold_freq=0.5;//threshold for frequent entities
+    value_type threshold_rel_freq=0.5;//threshold for frequent relations
+    value_type est_rel_coeff=1;//weight for relations in cal. real size
+    value_type est_entity_coeff=1;//coefficient for real_size+sample_size
+    bool L1_flag= false;//Using L1 norm or L2 norm for transE
     string optimization;
 
     string output_path;
@@ -41,6 +48,7 @@ public:
         ss << "lambdaA: " << lambdaA << endl;
         ss << "lambdaR: " << lambdaR << endl;
         ss << "margin: " << margin << endl;
+        ss << "using margin update: "<<margin_on<<endl;
         ss << "step_size: " << step_size << endl;
         ss << "optimization: " << optimization << endl;
         if (optimization == "adadelta") {

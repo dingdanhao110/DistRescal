@@ -73,14 +73,14 @@ public:
                         }
                         //cout<<"Thread "<<std::this_thread::get_id()<<": Work assigned"<<endl;
 
-                        value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR, parameter);
-                        value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR, parameter);
-                        if (positive_score - negative_score >= 2*parameter->margin) {
-                            continue;
-                        }
+//                        value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR, parameter);
+//                        value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR, parameter);
+//                        if (positive_score - negative_score >= 2*parameter->margin) {
+//                            continue;
+//                        }
                         {
                             std::lock_guard<std::mutex> lock(mutex_scheduler);
-                            violations++;
+                            //violations++;
                             training_samples.push_back(sample);
                             batch_assigner.assign(sample);
                         }
@@ -267,8 +267,14 @@ protected:
         //cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
         value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR, parameter);
         value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR, parameter);
-        if (positive_score - negative_score >= parameter->margin) {
-            return;
+        if (parameter->margin_on) {
+            if (positive_score - negative_score >= parameter->margin) {
+                return;
+            }
+        }
+
+        if (positive_score - negative_score < parameter->margin) {
+            violations++;
         }
 
         value_type p_pre = 1;
