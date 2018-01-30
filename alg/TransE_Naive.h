@@ -109,7 +109,7 @@ private:
         //Vec x = 2 * (row(transeA, sample.p_obj) - row(transeA, sample.p_sub) - row(transeR, sample.relation_id));
         value_type* x=new value_type[parameter->dimension];
         for(int i=0;i<parameter->dimension;++i){
-            x[i] = 2 * (embedA[sample.p_obj*parameter->dimension+i]-embedA[sample.p_sub*parameter->dimension+i]-embedA[sample.relation_id*parameter->dimension+i]);
+            x[i] = 2 * (embedA[sample.p_obj*parameter->dimension+i]-embedA[sample.p_sub*parameter->dimension+i]-embedR[sample.relation_id*parameter->dimension+i]);
         }
 
         if (parameter->L1_flag) {
@@ -137,7 +137,7 @@ private:
 
         //x = 2 * (row(transeA, sample.n_obj) - row(transeA, sample.n_sub) - row(transeR, sample.relation_id));
         for(int i=0;i<parameter->dimension;++i){
-            x[i] = 2 * (embedA[sample.n_obj*parameter->dimension+i]-embedA[sample.n_sub*parameter->dimension+i]-embedA[sample.relation_id*parameter->dimension+i]);
+            x[i] = 2 * (embedA[sample.n_obj*parameter->dimension+i]-embedA[sample.n_sub*parameter->dimension+i]-embedR[sample.relation_id*parameter->dimension+i]);
         }
 
         if (parameter->L1_flag) {

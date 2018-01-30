@@ -146,7 +146,7 @@ private:
         for (int i = 0; i < parameter->dimension; ++i) {
             x[i] = 2 *
                    (embedA[sample.p_obj * parameter->dimension + i] - embedA[sample.p_sub * parameter->dimension + i] -
-                    embedA[sample.relation_id * parameter->dimension + i]);
+                    embedR[sample.relation_id * parameter->dimension + i]);
         }
 
         if (parameter->L1_flag) {
@@ -176,7 +176,7 @@ private:
         for (int i = 0; i < parameter->dimension; ++i) {
             x[i] = 2 *
                    (embedA[sample.n_obj * parameter->dimension + i] - embedA[sample.n_sub * parameter->dimension + i] -
-                    embedA[sample.relation_id * parameter->dimension + i]);
+                    embedR[sample.relation_id * parameter->dimension + i]);
         }
 
         if (parameter->L1_flag) {

@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
             ("lambdaA", po::value<value_type>(&(parameter.lambdaA))->default_value(0), "regularization weight for entity")
             ("lambdaR", po::value<value_type>(&(parameter.lambdaR))->default_value(0), "regularization weight for relation")
             ("step_size", po::value<value_type>(&(parameter.step_size))->default_value(0.01), "step size")
-            ("margin", po::value<value_type>(&(parameter.margin))->default_value(0.5), "margin")
+            ("margin", po::value<value_type>(&(parameter.margin))->default_value(0.2), "margin")
             ("margin_on", po::value<bool>(&(parameter.margin_on))->default_value(1), "whether use margin update")
             ("pre_its", po::value<int>(&(parameter.num_of_pre_its))->default_value(-1), "number of precomputed batch assignment")
             ("thre_freq", po::value<value_type>(&(parameter.threshold_freq))->default_value(0.5), "threshold for frequent entities")
@@ -39,9 +39,9 @@ int main(int argc, char **argv) {
             ("n_e", po::value<int>(&(parameter.num_of_eval_thread))->default_value(-1), "number of threads for evaluation. -1: automatically set")
             ("p_epoch", po::value<int>(&(parameter.print_epoch))->default_value(2000), "print statistics every p_epoch")
             ("o_epoch", po::value<int>(&(parameter.output_epoch))->default_value(2000), "output A and R every o_epoch")
-            ("t_path", po::value<string>(&(parameter.train_data_path))->default_value("../data/WN18/wordnet-mlj12-train.txt"), "path to training file")
-            ("v_path", po::value<string>(&(parameter.valid_data_path))->default_value("../data/WN18/wordnet-mlj12-valid.txt"), "path to validation file")
-            ("e_path", po::value<string>(&(parameter.test_data_path))->default_value("../data/WN18/wordnet-mlj12-test.txt"), "path to testing file")
+            ("t_path", po::value<string>(&(parameter.train_data_path))->default_value("../data/FB15k/freebase_mtr100_mte100-train.txt"), "path to training file")
+            ("v_path", po::value<string>(&(parameter.valid_data_path))->default_value("../data/FB15k/freebase_mtr100_mte100-valid.txt"), "path to validation file")
+            ("e_path", po::value<string>(&(parameter.test_data_path))->default_value("../data/FB15k/freebase_mtr100_mte100-test.txt"), "path to testing file")
             ("o_path", po::value<string>(&(parameter.output_path))->default_value("./output"), "path to output file");
 
     po::variables_map vm;
