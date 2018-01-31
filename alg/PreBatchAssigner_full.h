@@ -2,8 +2,8 @@
 // Created by dhding on 9/30/17.
 //
 
-#ifndef DISTRESCAL_PREBATCH_H
-#define DISTRESCAL_PREBATCH_H
+#ifndef DISTRESCAL_PREBATCH_FULL_H
+#define DISTRESCAL_PREBATCH_FULL_H
 
 #include "../util/Base.h"
 #include "../struct/Sample.h"

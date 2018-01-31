@@ -83,3 +83,5 @@ add_executable(runTRANSE_PREBATCH_FULL src/runTRANSE_PREBATCH_full.cpp)
 add_executable(runTRANSE_NAIVE src/runTRANSE_NAIVE.cpp)
 add_executable(runTRANSE_LOCK src/runTRANSE_LOCK.cpp)
 add_executable(testSplitEntity src/testSplitEntity.cpp)
+
+add_executable(runPRINT_STAT src/runPrintStatistics.cpp)
