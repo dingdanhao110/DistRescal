@@ -115,6 +115,8 @@ public:
                 //Sample all training data
                 timer.start();
 
+                int p=0;
+
                 int current_epoch=epoch-start_epoch;
                 const int max_batch=plan[current_epoch][0].size();
                 if(!max_batch){cerr<<"Error at Epoch:"<<epoch<<endl;exit(-1);}
@@ -126,6 +128,7 @@ public:
                         computation_thread_pool->schedule(std::bind([&](const int thread_index) {
 
                             const vector<int>& queue = plan[current_epoch][thread_index][batch];
+                            p+=queue.size();
                             for(int index:queue) {
                                 Sample sample = samples.get_sample(current_epoch, index);
                                 this->update(sample);
@@ -141,6 +144,7 @@ public:
                 total_time += timer.getElapsedTime();
                 cout << "------------------------" << endl;
                 cout << "epoch " << epoch<< endl;
+                cout<<"tuples in plan:"<<p<<endl;
                 cout << "Total tuples: " << count<< endl;
 
                 cout << "training time " << timer.getElapsedTime() << " secs" << endl;
