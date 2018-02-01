@@ -128,8 +128,9 @@ public:
                         computation_thread_pool->schedule(std::bind([&](const int thread_index) {
 
                             const vector<int>& queue = plan[current_epoch][thread_index][batch];
-                            p+=queue.size();
+                            //p+=queue.size();
                             for(int index:queue) {
+                                p++;
                                 Sample sample = samples.get_sample(current_epoch, index);
                                 this->update(sample);
                             }
