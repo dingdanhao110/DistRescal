@@ -16,6 +16,7 @@ class TRANSE_PREBATCH_FULL : virtual public PREBATCH_FULL_OPTIMIZER<OptimizerTyp
     using PREBATCH_FULL_OPTIMIZER<OptimizerType>::data;
     using PREBATCH_FULL_OPTIMIZER<OptimizerType>::parameter;
     using PREBATCH_FULL_OPTIMIZER<OptimizerType>::violations;
+    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::count;
     using PREBATCH_FULL_OPTIMIZER<OptimizerType>::update_grad;
     using PREBATCH_FULL_OPTIMIZER<OptimizerType>::statistics;
     using PREBATCH_FULL_OPTIMIZER<OptimizerType>::rel_statistics;
@@ -90,7 +91,7 @@ private:
         value_type negative_score = cal_transe_score(sample.n_sub, sample.n_obj, sample.relation_id);
 
         value_type margin = positive_score + parameter->margin - negative_score;
-
+        count++;
         if (parameter->margin_on) {
             if (margin > 0) {
                 violations++;

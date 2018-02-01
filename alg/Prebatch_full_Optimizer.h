@@ -110,7 +110,7 @@ public:
             cout<<"Pre-pocessing time: "<<timer.getElapsedTime()<<endl;
 
             for(int epoch=start_epoch;epoch<end_epoch;++epoch){
-                //TODO: update
+                count=0;
                 violations = 0;
                 //Sample all training data
                 timer.start();
@@ -141,8 +141,9 @@ public:
                 total_time += timer.getElapsedTime();
                 cout << "------------------------" << endl;
                 cout << "epoch " << epoch<< endl;
+                cout << "Total tuples: " << count<< endl;
 
-                cout  << "training time " << timer.getElapsedTime() << " secs" << endl;
+                cout << "training time " << timer.getElapsedTime() << " secs" << endl;
 
                 cout << "violations: " << violations << endl;
 
@@ -224,6 +225,7 @@ protected:
     Data *data= nullptr;
     int current_epoch=0;
     int violations=0;
+    int count=0;
     value_type loss=0;
     //int block_size;
     vector<int> statistics;
