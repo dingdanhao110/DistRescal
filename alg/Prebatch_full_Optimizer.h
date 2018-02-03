@@ -110,12 +110,14 @@ public:
             cout<<"Pre-pocessing time: "<<timer.getElapsedTime()<<endl;
 
             for(int epoch=start_epoch;epoch<end_epoch;++epoch){
-                count=0;
+//                count=0;
                 violations = 0;
+                for(int & i:violation_vec){
+                    i=0;
+                }
+//                vector<int> counter(parameter->num_of_thread,0);
                 //Sample all training data
                 timer.start();
-
-                int p=0;
 
                 int current_epoch=epoch-start_epoch;
                 const int max_batch=plan[current_epoch][0].size();
@@ -128,11 +130,13 @@ public:
                         computation_thread_pool->schedule(std::bind([&](const int thread_index) {
 
                             const vector<int>& queue = plan[current_epoch][thread_index][batch];
-                            //p+=queue.size();
                             for(int index:queue) {
-                                p++;
+//                                counter[thread_index]++;
                                 Sample sample = samples.get_sample(current_epoch, index);
-                                this->update(sample);
+                                bool violated=this->update(sample);
+                                if(violated){
+                                    violation_vec[thread_index]++;
+                                }
                             }
                         }, thread_index));
                     }
@@ -143,13 +147,18 @@ public:
                 timer.stop();
 
                 total_time += timer.getElapsedTime();
+
+                for(int i:violation_vec){
+                    violations+=i;
+                }
+//                for(int i:counter){
+//                    count+=i;
+//                }
+
                 cout << "------------------------" << endl;
                 cout << "epoch " << epoch<< endl;
-                cout<<"tuples in plan:"<<p<<endl;
-                cout << "Total tuples: " << count<< endl;
-
+//                cout << "Total tuples: " << count<< endl;
                 cout << "training time " << timer.getElapsedTime() << " secs" << endl;
-
                 cout << "violations: " << violations << endl;
 
 
@@ -230,7 +239,8 @@ protected:
     Data *data= nullptr;
     int current_epoch=0;
     int violations=0;
-    int count=0;
+    vector<int>violation_vec;
+//    int count=0;
     value_type loss=0;
     //int block_size;
     vector<int> statistics;
@@ -281,7 +291,7 @@ protected:
         }
     }
 
-    virtual void update(const Sample &sample)=0;
+    virtual bool update(const Sample &sample)=0;
 
     virtual void eval(const int epoch)=0;
 
@@ -290,7 +300,8 @@ protected:
 public:
     explicit PREBATCH_FULL_OPTIMIZER<OptimizerType>(Parameter &parameter, Data &data):
             statistics(data.num_of_entity,0),
-            rel_statistics(data.num_of_relation,0)
+            rel_statistics(data.num_of_relation,0),
+            violation_vec(parameter.num_of_thread)
     {
         this->parameter=&parameter;
         this->data=&data;
