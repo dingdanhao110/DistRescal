@@ -83,6 +83,7 @@ add_executable(runRESCAL_PREBATCH_REL src/runRESCAL_PREBATCH_REL.cpp)
 
 add_executable(runTRANSE_PREBATCH src/runTRANSE_PREBATCH.cpp)
 add_executable(runTRANSE_PREBATCH_FULL src/runTRANSE_PREBATCH_full.cpp)
+add_executable(runTRANSE_PREBATCH_REL src/runTRANSE_PREBATCH_rel.cpp)
 add_executable(runTRANSE_NAIVE src/runTRANSE_NAIVE.cpp)
 add_executable(runTRANSE_LOCK src/runTRANSE_LOCK.cpp)
 add_executable(testSplitEntity src/testSplitEntity.cpp)
