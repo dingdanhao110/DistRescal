@@ -71,18 +71,14 @@ private:
         }
     }
 
-    void update(const Sample &sample) {
+    bool update(const Sample &sample) {
         //cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
         value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, embedA, embedR, parameter);
         value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, embedA, embedR, parameter);
         if (parameter->margin_on) {
             if (positive_score - negative_score >= parameter->margin) {
-                return;
+                return false;
             }
-        }
-
-        if (positive_score - negative_score < parameter->margin) {
-            violations++;
         }
 
         value_type p_pre = 1;
@@ -127,6 +123,7 @@ private:
         }
         //cout<<"Free grad4A_map\n";
         //cout<<"Exiting update\n";
+        return true;
     }
 
     void output(const int epoch) {
