@@ -37,7 +37,7 @@ set(alg
         alg/PreBatchAssigner.h alg/splitEntity.h alg/Prebatch_Optimizer.h alg/TransE_Prebatch.h alg/Naive_Optimizer.h alg/TransE_Naive.h alg/TransE_Lock.h alg/TransE_Prebatch_full.h
         alg/PreBatchAssigner_full.h alg/Prebatch_full_Optimizer.h
         alg/RESCAL_Prebatch_full.h alg/PreBatchAssigner_RelOnly.h
-        alg/Prebatch_rel_Optimizer.h alg/RESCAL_PREBATCH_REL.h)
+        alg/Prebatch_rel_Optimizer.h alg/RESCAL_PREBATCH_REL.h alg/H2_Assigner.h alg/H2_Optimizer.h alg/RESCAL_H2.h)
 
 set(util
     util/Monitor.h
@@ -80,6 +80,7 @@ add_executable(runRESCAL_ASYNC src/runRESCAL_ASYNC.cpp)
 add_executable(runRESCAL_PREBATCH src/runRESCAL_PREBATCH.cpp)
 add_executable(runRESCAL_PREBATCH_FULL src/runRESCAL_PREBATCH_FULL.cpp)
 add_executable(runRESCAL_PREBATCH_REL src/runRESCAL_PREBATCH_REL.cpp)
+add_executable(runRESCAL_H2 src/runRESCAL_H2.cpp)
 
 add_executable(runTRANSE_PREBATCH src/runTRANSE_PREBATCH.cpp)
 add_executable(runTRANSE_PREBATCH_FULL src/runTRANSE_PREBATCH_full.cpp)
