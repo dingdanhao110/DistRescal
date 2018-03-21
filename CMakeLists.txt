@@ -91,3 +91,5 @@ add_executable(runTRANSE_LOCK src/runTRANSE_LOCK.cpp)
 add_executable(testSplitEntity src/testSplitEntity.cpp)
 
 add_executable(runPRINT_STAT src/runPrintStatistics.cpp)
+
+add_executable(testConditionVariable src/testConditionVariable.cpp)
