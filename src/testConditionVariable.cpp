@@ -226,11 +226,10 @@ void wait_test(const unsigned long long count, const int num_of_thread) {
 
                 unsigned long long start = workload * thread_index;
                 unsigned long long end = std::min(workload + start, count);
-                for (int i = 0; i < 10; ++i) {
-                    for (unsigned long long i = start; i < end; i++) {
+                for (unsigned long long i = start; i < end; i++) {
                         individal_total[thread_index] += i;
-                    }
                 }
+
 
             }, thread_index));
         }
