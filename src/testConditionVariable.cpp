@@ -8,35 +8,49 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-
 using namespace boost::threadpool;
 
-const int it = 100;
+const int it = 1000000;
 
-class Semaphore {
-public:
-    Semaphore(int count_ = 0)
-            : count(count_) {}
-
-    inline void notify() {
-        std::unique_lock<std::mutex> lock(mtx);
-        count++;
-        cv.notify_one();
-    }
-
-    inline void wait() {
-        std::unique_lock<std::mutex> lock(mtx);
-
-        while (count == 0) {
-            cv.wait(lock);
-        }
-        count--;
-    }
-
+class Barrier {
 private:
-    std::mutex mtx;
-    std::condition_variable cv;
-    int count;
+    std::mutex m_mutex;
+    std::condition_variable m_cv;
+
+    size_t m_count;
+    const size_t m_initial;
+
+    enum State : unsigned char {
+        Up, Down
+    };
+    State m_state;
+
+public:
+    explicit Barrier(std::size_t count) : m_count{count}, m_initial{count}, m_state{State::Down} {}
+
+    /// Blocks until all N threads reach here
+    void Sync() {
+        std::unique_lock<std::mutex> lock{m_mutex};
+
+        if (m_state == State::Down) {
+            // Counting down the number of syncing threads
+            if (--m_count == 0) {
+                m_state = State::Up;
+                m_cv.notify_all();
+            } else {
+                m_cv.wait(lock, [this] { return m_state == State::Up; });
+            }
+        } else // (m_state == State::Up)
+        {
+            // Counting back up for Auto reset
+            if (++m_count == m_initial) {
+                m_state = State::Down;
+                m_cv.notify_all();
+            } else {
+                m_cv.wait(lock, [this] { return m_state == State::Down; });
+            }
+        }
+    }
 };
 
 void single_threaded(const unsigned long long count) {
@@ -124,12 +138,10 @@ void multi_threaded(const unsigned long long count, const int num_of_thread) {
 
 void cv(const unsigned long long count, const int num_of_thread) {
     pool *thread_pool = new pool(num_of_thread);
-    std::condition_variable cv;
-    int done = 0;
-    std::mutex mtx;//mutex for done..
 
     unsigned long long workload = count / num_of_thread + ((count % num_of_thread == 0) ? 0 : 1);
     std::vector<unsigned long long> individal_total(num_of_thread, 0);
+    Barrier b(num_of_thread);
 
     for (int thread_index = 0; thread_index < num_of_thread; thread_index++) {
 
@@ -142,16 +154,7 @@ void cv(const unsigned long long count, const int num_of_thread) {
                 for (unsigned long long i = start; i < end; i++) {
                     individal_total[thread_index] += i;
                 }
-                {
-                    std::lock_guard<std::mutex> lock(mtx);
-                    done++;
-                    cv.notify_all();
-                    if (done == num_of_thread)continue;
-                }
-                std::unique_lock<std::mutex> l(mtx);
-                while (done < num_of_thread) {
-                    cv.wait(l);
-                }
+                b.Sync();
             }
         }, thread_index));
     }
@@ -180,16 +183,7 @@ void cv(const unsigned long long count, const int num_of_thread) {
                 for (unsigned long long i = start; i < end; i++) {
                     individal_total[thread_index] -= i;
                 }
-                {
-                    std::lock_guard<std::mutex> lock(mtx);
-                    done++;
-                    cv.notify_all();
-                    if (done == num_of_thread)continue;
-                }
-                std::unique_lock<std::mutex> l(mtx);
-                while (done < num_of_thread) {
-                    cv.wait(l);
-                }
+                b.Sync();
             }
 
         }, thread_index));
@@ -279,7 +273,7 @@ void wait_test(const unsigned long long count, const int num_of_thread) {
 
 int main() {
 
-    unsigned long long count = 1000000001;
+    unsigned long long count = 100001;
 
     Monitor timer;
 
@@ -306,7 +300,7 @@ int main() {
     // In optimal situation, it should be 1/num_of_thread fraction of the time for single-threaded test.
     // But there are additional cost and the time should be between 1/num_of_thread and 1/(num_of_thread-1) fraction of the time for single-threaded test.
     std::cout << "time for condition variable test: " << timer.getElapsedTime() << " secs" << std::endl;
-
+    
     timer.start();
     wait_test(count, num_of_thread);
     timer.stop();
