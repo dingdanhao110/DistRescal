@@ -18,6 +18,7 @@
 #include "../alg/Optimizer.h"
 #include "../alg/PreBatchAssigner_full.h"
 #include "../struct/SHeap.h"
+#include "../util/Sync.h"
 #include "splitEntity.h"
 
 using namespace EvaluationUtil;
@@ -53,18 +54,20 @@ public:
         value_type assigner_time = 0.0;
         int max_round = 1 + (parameter->epoch - 1) / parameter->num_of_pre_its;
 
-        vector<vector<vector<vector<int>>>> plan(parameter->num_of_pre_its,
-                                                 std::vector<vector<vector<int>>>(parameter->num_of_thread,
-                                                                                  std::vector<vector<int>>(0,
-                                                                                                           std::vector<int>(
-                                                                                                                   0))));
+//        vector<vector<vector<vector<int>>>> plan(parameter->num_of_pre_its,
+//                                                 std::vector<vector<vector<int>>>(parameter->num_of_thread,
+//                                                                                  std::vector<vector<int>>(0,
+//                                                                                                           std::vector<int>(
+//                                                                                                                   0))));
         Samples samples(data, parameter);
-        //vector<PreBatch_assigner> assigners(parameter->num_of_thread,PreBatch_assigner(parameter->num_of_thread,samples,plan));
 
-        //std::ofstream fout("round.txt");
+        vector<pair<int, int>> thread_wl(parameter->num_of_thread);
+        for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
+            thread_wl[thread_index].first = thread_index * (parameter->dimension / parameter->num_of_thread);
+            thread_wl[thread_index].second = min((thread_index + 1) * (parameter->dimension / parameter->num_of_thread),
+                                                 parameter->dimension);
+        }
 
-        //unordered_set<int>freq_entities;
-        //unordered_set<int>freq_relations;
         for (int round = 0; round < max_round; ++round) {
             cout << "Round " << round << ": " << endl;
             cout << "Preassign starts\n";
@@ -78,31 +81,6 @@ public:
 
             cout << "Pivot\n";
             int wl = (end_epoch - start_epoch - 1) / parameter->num_of_thread + 1;
-            //cout<<start_epoch<<" "<<end_epoch<<" "<<wl<<endl;
-
-            //clean up the plan table
-            for (auto &its:plan) {
-                for (auto &thrds:its) {
-                    thrds.resize(0);
-                }
-            }
-
-            for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
-
-                computation_thread_pool->schedule(std::bind([&](const int thread_index) {
-                    int start = thread_index * wl;
-                    int end = std::min(start + wl, end_epoch - start_epoch);
-                    //cout<<start<<" "<<end<<endl;
-                    PreBatch_assigner_full assigner(parameter->num_of_thread, samples, plan,
-                                                    parameter, freq_entities,
-                                                    freq_relations);
-                    //assigner.clean_up();
-                    for (int n = start; n < end; n++) {
-                        assigner.assign_for_iteration(n);
-                    }
-                }, thread_index));
-            }
-            computation_thread_pool->wait();
 
             timer.stop();
             cout << "Preassign ends\n";
@@ -111,53 +89,37 @@ public:
             cout << "Pre-pocessing time: " << timer.getElapsedTime() << endl;
 
             for (int epoch = start_epoch; epoch < end_epoch; ++epoch) {
-//                count=0;
                 violations = 0;
-                for (int &i:violation_vec) {
-                    i = 0;
-                }
-//                vector<int> counter(parameter->num_of_thread,0);
                 //Sample all training data
-                timer.start();
-
                 int current_epoch = epoch - start_epoch;
-                const int max_batch = plan[current_epoch][0].size();
-                if (!max_batch) {
-                    cerr << "Error at Epoch:" << epoch << endl;
-                    exit(-1);
-                }
+                timer.start();
+                std::random_shuffle(indices.begin(), indices.end());
+                for (int n:indices) {
+                    //TODO: Check margin.
+//                    cout<<"margin?\n";
+                    Sample sample = samples.get_sample(current_epoch, n);
 
-                //prebatch assigner
-                for (int batch = 0; batch < max_batch; ++batch) {
-                    for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
-
-                        computation_thread_pool->schedule(std::bind([&](const int thread_index) {
-
-                            const vector<int> &queue = plan[current_epoch][thread_index][batch];
-                            for (int index:queue) {
-//                                counter[thread_index]++;
-                                Sample sample = samples.get_sample(current_epoch, index);
-                                bool violated = this->update(sample);
-                                if (violated) {
-                                    violation_vec[thread_index]++;
-                                }
-                            }
-                        }, thread_index));
+                    if (parameter->margin_on) {
+                        if (pass_margin(sample)) {
+                            ++violations;
+                        } else continue;
                     }
+//                    cout<<"margin passed\n";
 
+                    for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
+                        computation_thread_pool->schedule(std::bind([&](const int thread_index, const Sample &sample) {
+//                                cout<<std::this_thread::get_id()<<" job assigned\n";
+                            update_by_col(sample, thread_wl[thread_index].first,
+                                          thread_wl[thread_index].second);
+                        }, thread_index, sample));
+                    }
                     computation_thread_pool->wait();
                 }
+
 
                 timer.stop();
 
                 total_time += timer.getElapsedTime();
-
-                for (int i:violation_vec) {
-                    violations += i;
-                }
-//                for(int i:counter){
-//                    count+=i;
-//                }
 
                 cout << "------------------------" << endl;
                 cout << "epoch " << epoch << endl;
@@ -213,12 +175,7 @@ protected:
     Data *data = nullptr;
     int current_epoch = 0;
     int violations = 0;
-    vector<int> violation_vec;
-//    int count=0;
     value_type loss = 0;
-    //int block_size;
-    //vector<int> statistics;
-    //vector<int> rel_statistics;
     value_type *embedA;//DenseMatrix, UNSAFE!
     value_type *embedR;//vector<DenseMatrix>, UNSAFE!
     value_type *embedA_G;//DenseMatrix, UNSAFE!
@@ -265,17 +222,21 @@ protected:
         }
     }
 
-    virtual bool update(const Sample &sample)=0;
+    virtual void update_by_col(const Sample &sample, int s_col, int e_col)=0;
 
     virtual void eval(const int epoch)=0;
 
     void output(const int epoch) {}
 
+    virtual bool pass_margin(const Sample &sample)=0;// violate=true;
+
+
 public:
-    explicit ParallelOptimizer<OptimizerType>(Parameter &parameter, Data &data) :
+    explicit ParallelOptimizer<OptimizerType>(Parameter &parameter, Data &data)
 //            statistics(data.num_of_entity,0),
 //            rel_statistics(data.num_of_relation,0),
-            violation_vec(parameter.num_of_thread) {
+//            violation_vec(parameter.num_of_thread)
+    {
         this->parameter = &parameter;
         this->data = &data;
         computation_thread_pool = new pool(parameter.num_of_thread);

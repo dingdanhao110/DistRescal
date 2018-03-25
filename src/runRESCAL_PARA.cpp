@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
              "regularization weight for relation")
             ("step_size", po::value<value_type>(&(parameter.step_size))->default_value(0.1), "step size")
             ("margin", po::value<value_type>(&(parameter.margin))->default_value(1), "margin")
-            //("margin_on", po::value<bool>(&(parameter.margin_on))->default_value(1), "whether use margin update")
+            ("margin_on", po::value<bool>(&(parameter.margin_on))->default_value(1), "whether use margin update")
             //("pre_its", po::value<int>(&(parameter.num_of_pre_its))->default_value(-1), "number of precomputed batch assignment")
             //("thre_freq", po::value<value_type>(&(parameter.threshold_freq))->default_value(0.5), "threshold for frequent entities")
             //("est_entity_coeff", po::value<value_type>(&(parameter.est_entity_coeff))->default_value(1), "coefficient for real_size+sample_size")

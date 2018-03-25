@@ -49,7 +49,7 @@ set(util
     util/RandomUtil.h
     util/CompareUtil.h
     util/Calculator.h
-    util/Parameter.h)
+        util/Parameter.h util/Sync.h)
 
 set(struct
     struct/Triple.h
