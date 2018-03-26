@@ -23,19 +23,19 @@ using namespace Calculator;
 /**
  * Margin based RESCAL
  */
-template<typename OptimizerType>
-class RESCAL_PARA : virtual public ParallelOptimizer<OptimizerType> {
+//template<typename OptimizerType>
+class RESCAL_PARA : virtual public ParallelOptimizer {
 
 protected:
-    using ParallelOptimizer<OptimizerType>::data;
-    using ParallelOptimizer<OptimizerType>::parameter;
-    using ParallelOptimizer<OptimizerType>::current_epoch;
-    using ParallelOptimizer<OptimizerType>::violations;
-    using ParallelOptimizer<OptimizerType>::update_grad;
-    using ParallelOptimizer<OptimizerType>::embedA;
-    using ParallelOptimizer<OptimizerType>::embedR;
-    using ParallelOptimizer<OptimizerType>::embedA_G;
-    using ParallelOptimizer<OptimizerType>::embedR_G;
+    using ParallelOptimizer::data;
+    using ParallelOptimizer::parameter;
+    using ParallelOptimizer::current_epoch;
+    using ParallelOptimizer::violations;
+    using ParallelOptimizer::update_grad;
+    using ParallelOptimizer::embedA;
+    using ParallelOptimizer::embedR;
+    using ParallelOptimizer::embedA_G;
+    using ParallelOptimizer::embedR_G;
 
     value_type cal_loss() {
         return cal_loss_single_thread(parameter, data, embedA, embedR);
@@ -94,7 +94,8 @@ protected:
         // Step 2: do the update
         update_grad(embedR + sample.relation_id * parameter->dimension * parameter->dimension, grad4R,
                     embedR_G + sample.relation_id * parameter->dimension * parameter->dimension,
-                    parameter->dimension * parameter->dimension, parameter);
+                    parameter->dimension * parameter->dimension, parameter, s_col * parameter->dimension,
+                    e_col * parameter->dimension);
 
         value_type *A_grad = new value_type[parameter->dimension];
         for (auto ptr = grad4A_map.begin(); ptr != grad4A_map.end(); ptr++) {
@@ -107,7 +108,7 @@ protected:
 
             update_grad(embedA + parameter->dimension * ptr->first, A_grad,
                         embedA_G + parameter->dimension * ptr->first,
-                        parameter->dimension, parameter);
+                        parameter->dimension, parameter, s_col, e_col);
         }
         delete[] A_grad;//cout<<"Free A-grd\n";
         delete[] grad4R;//cout<<"Free grad4R\n";
@@ -281,7 +282,7 @@ protected:
     }
 
 public:
-    explicit RESCAL_PARA<OptimizerType>(Parameter &parameter, Data &data) : ParallelOptimizer<OptimizerType>(
+    explicit RESCAL_PARA(Parameter &parameter, Data &data) : ParallelOptimizer(
             parameter, data) {}
 
     ~RESCAL_PARA() {

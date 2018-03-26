@@ -51,11 +51,7 @@ public:
                     int end = std::min(start + workload, data->num_of_training_triples);
 
                     for (int n = start; n < end; n++) {
-                        if (parameter->num_of_thread == 1) {
-                            sample_points[it][n]= Sampler::random_sample(*data, n);
-                        } else {
-                            sample_points[it][n]= Sampler::random_sample_multithreaded(*data, n, generator);
-                        }
+                        sample_points[it][n] = Sampler::random_sample_multithreaded(*data, n, generator);
                     }
 
                 }, thread_index));

@@ -300,7 +300,7 @@ int main() {
     // In optimal situation, it should be 1/num_of_thread fraction of the time for single-threaded test.
     // But there are additional cost and the time should be between 1/num_of_thread and 1/(num_of_thread-1) fraction of the time for single-threaded test.
     std::cout << "time for condition variable test: " << timer.getElapsedTime() << " secs" << std::endl;
-    
+
     timer.start();
     wait_test(count, num_of_thread);
     timer.stop();

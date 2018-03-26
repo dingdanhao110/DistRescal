@@ -28,7 +28,7 @@ using namespace Calculator;
 /**
  * Margin based RESCAL_NOLOCK
  */
-template<typename OptimizerType>
+//template<typename OptimizerType>
 class ParallelOptimizer {
 public:
     /**
@@ -95,7 +95,7 @@ public:
                 timer.start();
                 std::random_shuffle(indices.begin(), indices.end());
                 for (int n:indices) {
-                    //TODO: Check margin.
+                    //Check margin.
 //                    cout<<"margin?\n";
                     Sample sample = samples.get_sample(current_epoch, n);
 
@@ -167,8 +167,23 @@ public:
     }
 
 protected:
+
+    class adagrad_by_col {
+    public:
+        void operator()(value_type *factors, value_type *gradient, value_type *pre_gradient_square,
+                        const int d, Parameter *parameter, int s_col, int e_col) {
+
+            value_type scale = parameter->step_size;
+
+            for (int i = s_col; i < e_col; i++) {
+                pre_gradient_square[i] += gradient[i] * gradient[i];
+                factors[i] += scale * gradient[i] / sqrt(pre_gradient_square[i] + min_not_zero_value);
+            }
+        }
+    } update_grad;
+
     // Functor object of update function
-    OptimizerType update_grad;
+//    OptimizerType update_grad;
 
     pool *computation_thread_pool = nullptr;
     Parameter *parameter = nullptr;
@@ -232,7 +247,7 @@ protected:
 
 
 public:
-    explicit ParallelOptimizer<OptimizerType>(Parameter &parameter, Data &data)
+    explicit ParallelOptimizer(Parameter &parameter, Data &data)
 //            statistics(data.num_of_entity,0),
 //            rel_statistics(data.num_of_relation,0),
 //            violation_vec(parameter.num_of_thread)

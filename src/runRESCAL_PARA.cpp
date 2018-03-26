@@ -33,7 +33,8 @@ int main(int argc, char **argv) {
             ("step_size", po::value<value_type>(&(parameter.step_size))->default_value(0.1), "step size")
             ("margin", po::value<value_type>(&(parameter.margin))->default_value(1), "margin")
             ("margin_on", po::value<bool>(&(parameter.margin_on))->default_value(1), "whether use margin update")
-            //("pre_its", po::value<int>(&(parameter.num_of_pre_its))->default_value(-1), "number of precomputed batch assignment")
+            ("pre_its", po::value<int>(&(parameter.num_of_pre_its))->default_value(-1),
+             "number of precomputed batch assignment")
             //("thre_freq", po::value<value_type>(&(parameter.threshold_freq))->default_value(0.5), "threshold for frequent entities")
             //("est_entity_coeff", po::value<value_type>(&(parameter.est_entity_coeff))->default_value(1), "coefficient for real_size+sample_size")
             //("est_rel_coeff", po::value<value_type>(&(parameter.est_rel_coeff))->default_value(1), "coefficient for real_size+sample_size")
@@ -91,6 +92,11 @@ int main(int argc, char **argv) {
         parameter.num_of_eval_thread = (num_of_thread == 0) ? 1 : num_of_thread;
     }
 
+    if (parameter.num_of_pre_its == -1) {
+        int num_of_thread = std::thread::hardware_concurrency();
+        parameter.num_of_pre_its = (num_of_thread == 0) ? 1 : num_of_thread;
+    }
+
 
     Data data;
     data.prepare_data(parameter.train_data_path, parameter.valid_data_path, parameter.test_data_path);
@@ -99,13 +105,13 @@ int main(int argc, char **argv) {
     print_info(parameter, data);
 
     if (parameter.optimization == "sgd") {
-        RESCAL_PARA<sgd> rescal_naive(parameter, data);
+        RESCAL_PARA rescal_naive(parameter, data);
         rescal_naive.train();
     } else if (parameter.optimization == "adagrad") {
-        RESCAL_PARA<adagrad> rescal_naive(parameter, data);
+        RESCAL_PARA rescal_naive(parameter, data);
         rescal_naive.train();
     } else if (parameter.optimization == "adadelta") {
-        RESCAL_PARA<adadelta> rescal_naive(parameter, data);
+        RESCAL_PARA rescal_naive(parameter, data);
         rescal_naive.train();
     } else {
         cerr << "recognized method: " << parameter.optimization << endl;
