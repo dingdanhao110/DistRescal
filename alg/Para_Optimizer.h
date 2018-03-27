@@ -68,6 +68,8 @@ public:
                                                  parameter->dimension);
         }
 
+        Barrier barrier(parameter->num_of_thread);
+
         for (int round = 0; round < max_round; ++round) {
             cout << "Round " << round << ": " << endl;
             cout << "Preassign starts\n";
@@ -110,10 +112,10 @@ public:
                         computation_thread_pool->schedule(std::bind([&](const int thread_index, const Sample &sample) {
 //                                cout<<std::this_thread::get_id()<<" job assigned\n";
                             update_by_col(sample, thread_wl[thread_index].first,
-                                          thread_wl[thread_index].second);
+                                          thread_wl[thread_index].second, barrier);
                         }, thread_index, sample));
                     }
-                    computation_thread_pool->wait();
+//                    computation_thread_pool->wait();
                 }
 
 
@@ -196,6 +198,7 @@ protected:
     value_type *embedA_G;//DenseMatrix, UNSAFE!
     value_type *embedR_G;//vector<DenseMatrix>, UNSAFE!
 
+
     virtual value_type cal_loss() {
         return cal_loss_single_thread(parameter, data, embedA, embedR);
     }
@@ -237,7 +240,8 @@ protected:
         }
     }
 
-    virtual void update_by_col(const Sample &sample, int s_col, int e_col)=0;
+    //NOTICE: this function will call barrier.Sync()
+    virtual void update_by_col(const Sample &sample, int s_col, int e_col, Barrier &barrier)=0;
 
     virtual void eval(const int epoch)=0;
 
@@ -247,14 +251,15 @@ protected:
 
 
 public:
-    explicit ParallelOptimizer(Parameter &parameter, Data &data)
+    explicit ParallelOptimizer(Parameter &para, Data &data)
+//            :
 //            statistics(data.num_of_entity,0),
 //            rel_statistics(data.num_of_relation,0),
 //            violation_vec(parameter.num_of_thread)
     {
-        this->parameter = &parameter;
+        this->parameter = &para;
         this->data = &data;
-        computation_thread_pool = new pool(parameter.num_of_thread);
+        computation_thread_pool = new pool(para.num_of_thread);
         //block_size=this->data->num_of_entity/(parameter.num_of_thread*3+3)+1;
     }
 

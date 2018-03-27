@@ -78,7 +78,7 @@ protected:
         }
     }
 
-    void update_by_col(const Sample &sample, int s_col, int e_col) {
+    void update_by_col(const Sample &sample, int s_col, int e_col, Barrier &barrier) {
 
         value_type p_pre = 1;
         value_type n_pre = 1;
@@ -91,6 +91,9 @@ protected:
         update_4_R(sample, grad4R, p_pre, n_pre, s_col, e_col);
         update_4_A(sample, grad4A_map, p_pre, n_pre, s_col, e_col);
 
+        // Step 1.5: sync all thread before doing update
+        barrier.Sync();
+
         // Step 2: do the update
         update_grad(embedR + sample.relation_id * parameter->dimension * parameter->dimension, grad4R,
                     embedR_G + sample.relation_id * parameter->dimension * parameter->dimension,
@@ -102,7 +105,7 @@ protected:
 
             //Vec A_grad = ptr->second - parameter.lambdaA * row(rescalA, ptr->first);
             //TODO: DOUBLE CHECK
-            for (int i = 0; i < parameter->dimension; ++i) {
+            for (int i = s_col; i < e_col; ++i) {
                 A_grad[i] = ptr->second[i] - parameter->lambdaA * embedA[ptr->first * parameter->dimension + i];
             }
 
