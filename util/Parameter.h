@@ -27,7 +27,7 @@ public:
     value_type lambdaR; // regularization weight
     int dimension;
     bool margin_on=1; //true: use margin update.
-    int num_of_pre_its=64;//number of rounds for pre-assignment
+    int num_of_pre_its = 8;//number of rounds for pre-assignment
     value_type heuristic1=100;//2000+ batches..
     value_type threshold_freq=0.5;//threshold for frequent entities
     value_type threshold_rel_freq=0.5;//threshold for frequent relations

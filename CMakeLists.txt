@@ -35,7 +35,9 @@ set(alg
     alg/Optimizer.h alg/RESCAL_NOLOCK.h alg/RESCAL_BLOCK.h alg/RESCAL_BATCH.h alg/RESCAL_POS.h alg/RESCAL_NLL.h alg/RESCAL_ASYNC.h
         alg/RESCAL_PREBATCH.h
         alg/PreBatchAssigner.h alg/splitEntity.h alg/Prebatch_Optimizer.h alg/TransE_Prebatch.h alg/Naive_Optimizer.h alg/TransE_Naive.h alg/TransE_Lock.h alg/TransE_Prebatch_full.h
-        alg/PreBatchAssigner_full.h alg/Prebatch_full_Optimizer.h alg/RESCAL_Prebatch_full.h)
+        alg/PreBatchAssigner_full.h alg/Prebatch_full_Optimizer.h
+        alg/RESCAL_Prebatch_full.h alg/PreBatchAssigner_RelOnly.h
+        alg/Prebatch_rel_Optimizer.h alg/RESCAL_PREBATCH_REL.h alg/H2_Assigner.h alg/H2_Optimizer.h alg/RESCAL_H2.h alg/Margin_multithread.h alg/RESCAL_NAIVE_mt.h alg/Para_Optimizer.h alg/RESCAL_PARA.h)
 
 set(util
     util/Monitor.h
@@ -47,7 +49,7 @@ set(util
     util/RandomUtil.h
     util/CompareUtil.h
     util/Calculator.h
-    util/Parameter.h)
+        util/Parameter.h util/Sync.h)
 
 set(struct
     struct/Triple.h
@@ -77,9 +79,18 @@ add_executable(runRESCAL_NLL src/runRESCAL_NLL.cpp)
 add_executable(runRESCAL_ASYNC src/runRESCAL_ASYNC.cpp)
 add_executable(runRESCAL_PREBATCH src/runRESCAL_PREBATCH.cpp)
 add_executable(runRESCAL_PREBATCH_FULL src/runRESCAL_PREBATCH_FULL.cpp)
+add_executable(runRESCAL_PREBATCH_REL src/runRESCAL_PREBATCH_REL.cpp)
+add_executable(runRESCAL_H2 src/runRESCAL_H2.cpp)
+add_executable(runRESCAL_NAIVE_mt src/runRESCAL_NAIVE_mt.cpp)
+add_executable(runRESCAL_PARA src/runRESCAL_PARA.cpp)
 
 add_executable(runTRANSE_PREBATCH src/runTRANSE_PREBATCH.cpp)
 add_executable(runTRANSE_PREBATCH_FULL src/runTRANSE_PREBATCH_full.cpp)
+add_executable(runTRANSE_PREBATCH_REL src/runTRANSE_PREBATCH_rel.cpp)
 add_executable(runTRANSE_NAIVE src/runTRANSE_NAIVE.cpp)
 add_executable(runTRANSE_LOCK src/runTRANSE_LOCK.cpp)
 add_executable(testSplitEntity src/testSplitEntity.cpp)
+
+add_executable(runPRINT_STAT src/runPrintStatistics.cpp)
+
+add_executable(testConditionVariable src/testConditionVariable.cpp)

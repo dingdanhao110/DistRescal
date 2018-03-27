@@ -29,6 +29,7 @@ int main(int argc, char **argv) {
             ("pre_its", po::value<int>(&(parameter.num_of_pre_its))->default_value(-1), "number of precomputed batch assignment")
             ("thre_freq", po::value<value_type>(&(parameter.threshold_freq))->default_value(0.5), "threshold for frequent entities")
             ("est_entity_coeff", po::value<value_type>(&(parameter.est_entity_coeff))->default_value(1), "coefficient for real_size+sample_size")
+            ("est_rel_coeff", po::value<value_type>(&(parameter.est_rel_coeff))->default_value(1), "coefficient for real_size+sample_size")
             ("epoch", po::value<int>(&(parameter.epoch))->default_value(2000), "maximum training epoch")
             ("hit_rate_topk", po::value<int>(&(parameter.hit_rate_topk))->default_value(10), "hit rate@k")
             ("rho", po::value<value_type>(&(parameter.Rho))->default_value(0.9), "parameter for AdaDelta")

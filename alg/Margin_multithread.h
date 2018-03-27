@@ -1,11 +1,16 @@
-#ifndef MARGINBASEDOPTIMIZER_H
-#define MARGINBASEDOPTIMIZER_H
+//
+// Created by dhding on 3/15/18.
+//
+
+#ifndef DISTRESCAL_MARGIN_MULTITHREAD_H
+#define DISTRESCAL_MARGIN_MULTITHREAD_H
 
 #include "../alg/Sampler.h"
 #include "../util/Base.h"
 #include "../util/Parameter.h"
 #include "../util/Data.h"
 #include "../util/Monitor.h"
+#include <thread>
 
 /**
  * Stochastic Gradient Descent
@@ -82,7 +87,10 @@ protected:
     // Functor object of update function
     OptimizerType update_grad;
 
-    pool *computation_thread_pool = nullptr;
+    //pool *computation_thread_pool = nullptr;
+
+    std::thread *pool = nullptr;
+
     Parameter *parameter = nullptr;
     Data *data = nullptr;
     int current_epoch;
@@ -126,11 +134,13 @@ protected:
 public:
 
     explicit MarginBasedOptimizer(Parameter &parameter, Data &data) : parameter(&parameter), data(&data) {
-        computation_thread_pool = new pool(parameter.num_of_thread);
+        //computation_thread_pool = new pool(parameter.num_of_thread);
+        pool = new std::thread[parameter.num_of_thread];
     }
 
     ~MarginBasedOptimizer() {
-        delete computation_thread_pool;
+        //delete computation_thread_pool;
+        delete pool;
     }
 
     /**
@@ -165,16 +175,17 @@ public:
 
             for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
 
-                computation_thread_pool->schedule(std::bind([&](const int thread_index) {
-                    std::mt19937 *generator = new std::mt19937(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
+                pool[thread_index] = std::thread(std::bind([&](const int thread_index) {
+                    std::mt19937 *generator = new std::mt19937(
+                            clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
                     int start = thread_index * workload;
                     int end = std::min(start + workload, data->num_of_training_triples);
                     Sample sample;
                     for (int n = start; n < end; n++) {
-                        if(parameter->num_of_thread == 1){
+                        if (parameter->num_of_thread == 1) {
                             Sampler::random_sample(*data, sample, indices[n]);
                         } else {
-                            Sampler::random_sample_multithreaded(*data, sample, indices[n],generator);
+                            Sampler::random_sample_multithreaded(*data, sample, indices[n], generator);
                         }
                         //cout<<"Thread "<<std::this_thread::get_id()<<": Work assigned"<<endl;
                         update(sample);
@@ -183,7 +194,9 @@ public:
                 }, thread_index));
             }
 
-            computation_thread_pool->wait();
+            for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
+                pool[thread_index].join();
+            }
 
             timer.stop();
 
@@ -195,7 +208,7 @@ public:
 
             cout << "violations: " << violations << endl;
 
-            if(parameter->show_loss) {
+            if (parameter->show_loss) {
 
                 timer.start();
 
@@ -232,4 +245,4 @@ public:
 
 };
 
-#endif //MARGINBASEDOPTIMIZER_H
+#endif //DISTRESCAL_MARGIN_MULTITHREAD_H

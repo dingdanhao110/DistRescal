@@ -1,27 +1,27 @@
 //
-// Created by dhding on 1/28/18.
+// Created by dhding on 3/1/18.
 //
 
-#ifndef DISTRESCAL_TRANSE_PREBATCH_FULL_H
-#define DISTRESCAL_TRANSE_PREBATCH_FULL_H
+#ifndef DISTRESCAL_RESCAL_PREBATCH_REL_H
+#define DISTRESCAL_RESCAL_PREBATCH_REL_H
 
-#include "Prebatch_full_Optimizer.h"
+#include "Prebatch_rel_Optimizer.h"
 
 template<typename OptimizerType>
-class RESCAL_PREBATCH_FULL : virtual public PREBATCH_FULL_OPTIMIZER<OptimizerType> {
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedA_G;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedA;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedR_G;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedR;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::data;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::parameter;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::violations;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::update_grad;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::statistics;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::rel_statistics;
+class RESCAL_PREBATCH_REL : virtual public PREBATCH_REL_OPTIMIZER<OptimizerType> {
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::embedA_G;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::embedA;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::embedR_G;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::embedR;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::data;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::parameter;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::violations;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::update_grad;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::statistics;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::rel_statistics;
 public:
-    explicit RESCAL_PREBATCH_FULL(Parameter &parameter, Data &data) :
-            PREBATCH_FULL_OPTIMIZER<OptimizerType>(parameter, data) {}
+    explicit RESCAL_PREBATCH_REL(Parameter &parameter, Data &data) :
+            PREBATCH_REL_OPTIMIZER<OptimizerType>(parameter, data) {}
 
 private:
 
@@ -274,6 +274,4 @@ private:
         //cout<<"Exiting update4R\n";
     }
 };
-
-
-#endif //DISTRESCAL_TRANSE_PREBATCH_FULL_H
+#endif //DISTRESCAL_RESCAL_PREBATCH_REL_H

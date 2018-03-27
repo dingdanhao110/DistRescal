@@ -5,22 +5,22 @@
 #ifndef DISTRESCAL_TRANSE_PREBATCH_FULL_H
 #define DISTRESCAL_TRANSE_PREBATCH_FULL_H
 
-#include "Prebatch_full_Optimizer.h"
+#include "Prebatch_rel_Optimizer.h"
 
 template<typename OptimizerType>
-class TRANSE_PREBATCH_FULL : virtual public PREBATCH_FULL_OPTIMIZER<OptimizerType> {
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedA_G;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedA;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedR_G;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedR;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::data;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::parameter;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::update_grad;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::statistics;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::rel_statistics;
+class TRANSE_PREBATCH_REL : virtual public PREBATCH_REL_OPTIMIZER<OptimizerType> {
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::embedA_G;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::embedA;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::embedR_G;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::embedR;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::data;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::parameter;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::update_grad;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::statistics;
+    using PREBATCH_REL_OPTIMIZER<OptimizerType>::rel_statistics;
 public:
-    explicit TRANSE_PREBATCH_FULL(Parameter &parameter, Data &data) :
-            PREBATCH_FULL_OPTIMIZER<OptimizerType>(parameter, data) {}
+    explicit TRANSE_PREBATCH_REL(Parameter &parameter, Data &data) :
+            PREBATCH_REL_OPTIMIZER<OptimizerType>(parameter, data) {}
 
 private:
 
@@ -37,11 +37,13 @@ private:
         value_type sum = 0;
         if (parameter->L1_flag) {
             for (int i = 0; i < parameter->dimension; i++) {
-                sum += abs(embedA[obj_id * parameter->dimension + i] - embedA[sub_id * parameter->dimension + i] - embedR[rel_id * parameter->dimension + i]);
+                sum += abs(embedA[obj_id * parameter->dimension + i] - embedA[sub_id * parameter->dimension + i] -
+                           embedR[rel_id * parameter->dimension + i]);
             }
         } else {
             for (int i = 0; i < parameter->dimension; i++) {
-                sum += sqr(embedA[obj_id * parameter->dimension + i] - embedA[sub_id * parameter->dimension + i] - embedR[rel_id * parameter->dimension + i]);
+                sum += sqr(embedA[obj_id * parameter->dimension + i] - embedA[sub_id * parameter->dimension + i] -
+                           embedR[rel_id * parameter->dimension + i]);
             }
         }
         return sum;
@@ -113,9 +115,11 @@ private:
         value_type *rel_vec = embedR + sample.relation_id * parameter->dimension;
 
         //Vec x = 2 * (row(transeA, sample.p_obj) - row(transeA, sample.p_sub) - row(transeR, sample.relation_id));
-        value_type* x=new value_type[parameter->dimension];
-        for(int i=0;i<parameter->dimension;++i){
-            x[i] = 2 * (embedA[sample.p_obj*parameter->dimension+i]-embedA[sample.p_sub*parameter->dimension+i]-embedR[sample.relation_id*parameter->dimension+i]);
+        value_type *x = new value_type[parameter->dimension];
+        for (int i = 0; i < parameter->dimension; ++i) {
+            x[i] = 2 *
+                   (embedA[sample.p_obj * parameter->dimension + i] - embedA[sample.p_sub * parameter->dimension + i] -
+                    embedR[sample.relation_id * parameter->dimension + i]);
         }
 
         if (parameter->L1_flag) {
@@ -129,21 +133,23 @@ private:
         }
 
         update_grad(rel_vec, x,
-                    embedR_G + sample.relation_id * parameter->dimension, parameter->dimension,parameter);
+                    embedR_G + sample.relation_id * parameter->dimension, parameter->dimension, parameter);
 
         update_grad(p_sub_vec, x, embedA_G + sample.p_sub * parameter->dimension,
-                    parameter->dimension,parameter);
+                    parameter->dimension, parameter);
 
-        for(int i=0;i<parameter->dimension;++i) {
+        for (int i = 0; i < parameter->dimension; ++i) {
             x[i] = -x[i];
         }
 
         update_grad(p_obj_vec, x, embedA_G + sample.p_obj * parameter->dimension,
-                    parameter->dimension,parameter);
+                    parameter->dimension, parameter);
 
         //x = 2 * (row(transeA, sample.n_obj) - row(transeA, sample.n_sub) - row(transeR, sample.relation_id));
-        for(int i=0;i<parameter->dimension;++i){
-            x[i] = 2 * (embedA[sample.n_obj*parameter->dimension+i]-embedA[sample.n_sub*parameter->dimension+i]-embedR[sample.relation_id*parameter->dimension+i]);
+        for (int i = 0; i < parameter->dimension; ++i) {
+            x[i] = 2 *
+                   (embedA[sample.n_obj * parameter->dimension + i] - embedA[sample.n_sub * parameter->dimension + i] -
+                    embedR[sample.relation_id * parameter->dimension + i]);
         }
 
         if (parameter->L1_flag) {
@@ -160,27 +166,27 @@ private:
         if (subject_replace) {
 
             update_grad(p_obj_vec, x,
-                        embedA_G + sample.p_obj * parameter->dimension, parameter->dimension,parameter);
+                        embedA_G + sample.p_obj * parameter->dimension, parameter->dimension, parameter);
 
-            for(int i=0;i<parameter->dimension;++i) {
+            for (int i = 0; i < parameter->dimension; ++i) {
                 x[i] = -x[i];
             }
 
             update_grad(n_sub_vec, x,
-                        embedA_G + sample.n_sub * parameter->dimension, parameter->dimension,parameter);
+                        embedA_G + sample.n_sub * parameter->dimension, parameter->dimension, parameter);
 
         } else {
 
             update_grad(n_obj_vec, x,
-                        embedA_G + sample.n_obj * parameter->dimension, parameter->dimension,parameter);
-            for(int i=0;i<parameter->dimension;++i) {
+                        embedA_G + sample.n_obj * parameter->dimension, parameter->dimension, parameter);
+            for (int i = 0; i < parameter->dimension; ++i) {
                 x[i] = -x[i];
             }
             update_grad(p_sub_vec, x,
-                        embedA_G + sample.p_sub * parameter->dimension, parameter->dimension,parameter);
+                        embedA_G + sample.p_sub * parameter->dimension, parameter->dimension, parameter);
         }
         update_grad(rel_vec, x,
-                    embedR_G + sample.relation_id * parameter->dimension, parameter->dimension,parameter);
+                    embedR_G + sample.relation_id * parameter->dimension, parameter->dimension, parameter);
 
 
         normalizeOne(rel_vec, parameter->dimension);
@@ -202,11 +208,14 @@ private:
         string output_path = parameter->output_path + "/" + to_string(epoch);
 
         output_matrix(embedA, data->num_of_entity, parameter->dimension, "A_" + to_string(epoch) + ".dat", output_path);
-        output_matrix(embedR, data->num_of_relation, parameter->dimension, "R_" + to_string(epoch) + ".dat", output_path);
+        output_matrix(embedR, data->num_of_relation, parameter->dimension, "R_" + to_string(epoch) + ".dat",
+                      output_path);
 
-        if(parameter->optimization=="adagrad" || parameter->optimization=="adadelta"){
-            output_matrix(embedA_G, data->num_of_entity, parameter->dimension, "A_G_" + to_string(epoch) + ".dat", output_path);
-            output_matrix(embedR_G, data->num_of_relation, parameter->dimension, "R_G_" + to_string(epoch) + ".dat", output_path);
+        if (parameter->optimization == "adagrad" || parameter->optimization == "adadelta") {
+            output_matrix(embedA_G, data->num_of_entity, parameter->dimension, "A_G_" + to_string(epoch) + ".dat",
+                          output_path);
+            output_matrix(embedR_G, data->num_of_relation, parameter->dimension, "R_G_" + to_string(epoch) + ".dat",
+                          output_path);
         }
 
     }

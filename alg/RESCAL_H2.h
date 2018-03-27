@@ -1,27 +1,26 @@
 //
-// Created by dhding on 1/28/18.
+// Created by dhding on 3/9/18.
 //
 
-#ifndef DISTRESCAL_TRANSE_PREBATCH_FULL_H
-#define DISTRESCAL_TRANSE_PREBATCH_FULL_H
+#ifndef DISTRESCAL_RESCAL_H2_H
+#define DISTRESCAL_RESCAL_H2_H
 
-#include "Prebatch_full_Optimizer.h"
+
+#include "H2_Optimizer.h"
 
 template<typename OptimizerType>
-class RESCAL_PREBATCH_FULL : virtual public PREBATCH_FULL_OPTIMIZER<OptimizerType> {
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedA_G;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedA;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedR_G;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedR;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::data;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::parameter;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::violations;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::update_grad;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::statistics;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::rel_statistics;
+class RESCAL_H2 : virtual public H2_OPTIMIZER<OptimizerType> {
+    using H2_OPTIMIZER<OptimizerType>::embedA_G;
+    using H2_OPTIMIZER<OptimizerType>::embedA;
+    using H2_OPTIMIZER<OptimizerType>::embedR_G;
+    using H2_OPTIMIZER<OptimizerType>::embedR;
+    using H2_OPTIMIZER<OptimizerType>::data;
+    using H2_OPTIMIZER<OptimizerType>::parameter;
+    using H2_OPTIMIZER<OptimizerType>::violations;
+    using H2_OPTIMIZER<OptimizerType>::update_grad;
 public:
-    explicit RESCAL_PREBATCH_FULL(Parameter &parameter, Data &data) :
-            PREBATCH_FULL_OPTIMIZER<OptimizerType>(parameter, data) {}
+    explicit RESCAL_H2(Parameter &parameter, Data &data) :
+            H2_OPTIMIZER<OptimizerType>(parameter, data) {}
 
 private:
 
@@ -47,7 +46,7 @@ private:
         this->current_epoch = 1;
 
         embedA = new value_type[data->num_of_entity * parameter->dimension];
-        embedR = new value_type [data->num_of_relation * parameter->dimension * parameter->dimension];
+        embedR = new value_type[data->num_of_relation * parameter->dimension * parameter->dimension];
 
         init_G(parameter->dimension);
 
@@ -73,8 +72,10 @@ private:
 
     bool update(const Sample &sample) {
         //cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
-        value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, embedA, embedR, parameter);
-        value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, embedA, embedR, parameter);
+        value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, embedA, embedR,
+                                                     parameter);
+        value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, embedA, embedR,
+                                                     parameter);
         if (parameter->margin_on) {
             if (positive_score - negative_score >= parameter->margin) {
                 return false;
@@ -84,11 +85,6 @@ private:
         value_type p_pre = 1;
         value_type n_pre = 1;
 
-        ++statistics[sample.n_obj];
-        ++statistics[sample.n_sub];
-        ++statistics[sample.p_obj];
-        ++statistics[sample.p_sub];
-        ++rel_statistics[sample.relation_id];
         //DenseMatrix grad4R(parameter.rescal_D, parameter.rescal_D);
         value_type *grad4R = new value_type[parameter->dimension * parameter->dimension];
         unordered_map<int, value_type *> grad4A_map;
@@ -118,7 +114,7 @@ private:
         delete[] A_grad;//cout<<"Free A-grd\n";
         delete[] grad4R;//cout<<"Free grad4R\n";
 
-        for(auto pair:grad4A_map){
+        for (auto pair:grad4A_map) {
             delete[] pair.second;
         }
         //cout<<"Free grad4A_map\n";
@@ -131,20 +127,23 @@ private:
         string output_path = parameter->output_path + "/" + to_string(epoch);
 
         output_matrix(embedA, data->num_of_entity, parameter->dimension, "A_" + to_string(epoch) + ".dat", output_path);
-        output_matrix(embedR, data->num_of_relation, parameter->dimension, "R_" + to_string(epoch) + ".dat", output_path);
+        output_matrix(embedR, data->num_of_relation, parameter->dimension, "R_" + to_string(epoch) + ".dat",
+                      output_path);
 
-        if(parameter->optimization=="adagrad" || parameter->optimization=="adadelta"){
-            output_matrix(embedA_G, data->num_of_entity, parameter->dimension, "A_G_" + to_string(epoch) + ".dat", output_path);
-            output_matrix(embedR_G, data->num_of_relation, parameter->dimension, "R_G_" + to_string(epoch) + ".dat", output_path);
+        if (parameter->optimization == "adagrad" || parameter->optimization == "adadelta") {
+            output_matrix(embedA_G, data->num_of_entity, parameter->dimension, "A_G_" + to_string(epoch) + ".dat",
+                          output_path);
+            output_matrix(embedR_G, data->num_of_relation, parameter->dimension, "R_G_" + to_string(epoch) + ".dat",
+                          output_path);
         }
 
     }
 
-    void update_4_A(const Sample &sample, unordered_map<int, value_type*> &grad4A_map, const value_type p_pre,
+    void update_4_A(const Sample &sample, unordered_map<int, value_type *> &grad4A_map, const value_type p_pre,
                     const value_type n_pre) {
         //cout<<"Entering update4A\n";
         //DenseMatrix &R_k = rescalR[sample.relation_id];
-        value_type * R_k = embedR + sample.relation_id * parameter->dimension * parameter->dimension;
+        value_type *R_k = embedR + sample.relation_id * parameter->dimension * parameter->dimension;
 
         //Vec p_tmp1 = prod(R_k, row(rescalA, sample.p_obj));
         value_type *p_tmp1 = new value_type[parameter->dimension];
@@ -230,10 +229,10 @@ private:
             }
         }
 
-        delete [] p_tmp1;
-        delete [] p_tmp2;
-        delete [] n_tmp1;
-        delete [] n_tmp2;
+        delete[] p_tmp1;
+        delete[] p_tmp2;
+        delete[] n_tmp1;
+        delete[] n_tmp2;
         //cout<<"Exiting update4A\n";
     }
 
@@ -275,5 +274,4 @@ private:
     }
 };
 
-
-#endif //DISTRESCAL_TRANSE_PREBATCH_FULL_H
+#endif //DISTRESCAL_RESCAL_H2_H

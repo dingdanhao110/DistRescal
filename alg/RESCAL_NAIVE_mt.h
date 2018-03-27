@@ -1,53 +1,61 @@
 //
-// Created by dhding on 1/28/18.
+// Created by dhding on 3/15/18.
 //
 
-#ifndef DISTRESCAL_TRANSE_PREBATCH_FULL_H
-#define DISTRESCAL_TRANSE_PREBATCH_FULL_H
+#ifndef DISTRESCAL_RESCAL_NAIVE_MT_H
+#define DISTRESCAL_RESCAL_NAIVE_MT_H
 
-#include "Prebatch_full_Optimizer.h"
+#include "../util/Base.h"
+#include "../util/RandomUtil.h"
+#include "../util/Monitor.h"
+#include "../util/FileUtil.h"
+#include "../util/CompareUtil.h"
+#include "../util/EvaluationUtil.h"
+#include "../util/Data.h"
+#include "../util/Calculator.h"
+#include "../util/Parameter.h"
+#include "../alg/Margin_multithread.h"
 
+using namespace EvaluationUtil;
+using namespace FileUtil;
+using namespace Calculator;
+
+/**
+ * Margin based RESCAL
+ */
 template<typename OptimizerType>
-class RESCAL_PREBATCH_FULL : virtual public PREBATCH_FULL_OPTIMIZER<OptimizerType> {
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedA_G;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedA;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedR_G;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::embedR;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::data;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::parameter;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::violations;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::update_grad;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::statistics;
-    using PREBATCH_FULL_OPTIMIZER<OptimizerType>::rel_statistics;
-public:
-    explicit RESCAL_PREBATCH_FULL(Parameter &parameter, Data &data) :
-            PREBATCH_FULL_OPTIMIZER<OptimizerType>(parameter, data) {}
+class RESCAL_NAIVE : virtual public MarginBasedOptimizer<OptimizerType> {
 
-private:
+protected:
+    using MarginBasedOptimizer<OptimizerType>::data;
+    using MarginBasedOptimizer<OptimizerType>::parameter;
+    using MarginBasedOptimizer<OptimizerType>::current_epoch;
+    using MarginBasedOptimizer<OptimizerType>::violations;
+    using MarginBasedOptimizer<OptimizerType>::update_grad;
 
-    void eval(const int epoch) {
+    value_type *rescalA;//DenseMatrix, UNSAFE!
+    value_type *rescalR;//vector<DenseMatrix>, UNSAFE!
+    value_type *rescalA_G;//DenseMatrix, UNSAFE!
+    value_type *rescalR_G;//vector<DenseMatrix>, UNSAFE!
 
-        hit_rate testing_measure = eval_hit_rate(parameter, data, embedA, embedR);
-
-        string prefix = "testing data >>> ";
-
-        print_hit_rate(prefix, parameter->hit_rate_topk, testing_measure);
+    value_type cal_loss() {
+        return cal_loss_single_thread(parameter, data, rescalA, rescalR);
     }
 
     void init_G(const int D) {
-        embedA_G = new value_type[data->num_of_entity * D];
-        std::fill(embedA_G, embedA_G + data->num_of_entity * D, 0);
+        rescalA_G = new value_type[data->num_of_entity * D];
+        std::fill(rescalA_G, rescalA_G + data->num_of_entity * D, 0);
 
-        embedR_G = new value_type[data->num_of_relation * D * D];
-        std::fill(embedR_G, embedR_G + data->num_of_relation * D * D, 0);
+        rescalR_G = new value_type[data->num_of_relation * D * D];
+        std::fill(rescalR_G, rescalR_G + data->num_of_relation * D * D, 0);
     }
 
     void initialize() {
 
         this->current_epoch = 1;
 
-        embedA = new value_type[data->num_of_entity * parameter->dimension];
-        embedR = new value_type [data->num_of_relation * parameter->dimension * parameter->dimension];
+        rescalA = new value_type[data->num_of_entity * parameter->dimension];
+        rescalR = new value_type[data->num_of_relation * parameter->dimension * parameter->dimension];
 
         init_G(parameter->dimension);
 
@@ -55,14 +63,14 @@ private:
 
         for (int row = 0; row < data->num_of_entity; row++) {
             for (int col = 0; col < parameter->dimension; col++) {
-                embedA[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
+                rescalA[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
             }
         }
 
         bnd = sqrt(6) / sqrt(parameter->dimension + parameter->dimension);
 
         for (int R_i = 0; R_i < data->num_of_relation; R_i++) {
-            value_type *sub_R = embedR + R_i * parameter->dimension * parameter->dimension;
+            value_type *sub_R = rescalR + R_i * parameter->dimension * parameter->dimension;
             for (int row = 0; row < parameter->dimension; row++) {
                 for (int col = 0; col < parameter->dimension; col++) {
                     sub_R[row * parameter->dimension + col] = RandomUtil::uniform_real(-bnd, bnd);
@@ -71,24 +79,26 @@ private:
         }
     }
 
-    bool update(const Sample &sample) {
-        //cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
-        value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, embedA, embedR, parameter);
-        value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, embedA, embedR, parameter);
-        if (parameter->margin_on) {
-            if (positive_score - negative_score >= parameter->margin) {
-                return false;
-            }
-        }
+    void update(const Sample &sample) {
+
+        value_type positive_score = cal_rescal_score(sample.relation_id, sample.p_sub, sample.p_obj, rescalA, rescalR,
+                                                     parameter);
+        value_type negative_score = cal_rescal_score(sample.relation_id, sample.n_sub, sample.n_obj, rescalA, rescalR,
+                                                     parameter);
 
         value_type p_pre = 1;
         value_type n_pre = 1;
 
-        ++statistics[sample.n_obj];
-        ++statistics[sample.n_sub];
-        ++statistics[sample.p_obj];
-        ++statistics[sample.p_sub];
-        ++rel_statistics[sample.relation_id];
+        if (parameter->margin_on) {
+            if (positive_score - negative_score >= parameter->margin) {
+                return;
+            }
+        }
+
+        if (positive_score - negative_score < parameter->margin) {
+            violations++;
+        }
+
         //DenseMatrix grad4R(parameter.rescal_D, parameter.rescal_D);
         value_type *grad4R = new value_type[parameter->dimension * parameter->dimension];
         unordered_map<int, value_type *> grad4A_map;
@@ -98,8 +108,8 @@ private:
         update_4_A(sample, grad4A_map, p_pre, n_pre);
 
         // Step 2: do the update
-        update_grad(embedR + sample.relation_id * parameter->dimension * parameter->dimension, grad4R,
-                    embedR_G + sample.relation_id * parameter->dimension * parameter->dimension,
+        update_grad(rescalR + sample.relation_id * parameter->dimension * parameter->dimension, grad4R,
+                    rescalR_G + sample.relation_id * parameter->dimension * parameter->dimension,
                     parameter->dimension * parameter->dimension, parameter);
 
         value_type *A_grad = new value_type[parameter->dimension];
@@ -108,50 +118,49 @@ private:
             //Vec A_grad = ptr->second - parameter.lambdaA * row(rescalA, ptr->first);
             //TODO: DOUBLE CHECK
             for (int i = 0; i < parameter->dimension; ++i) {
-                A_grad[i] = ptr->second[i] - parameter->lambdaA * embedA[ptr->first * parameter->dimension + i];
+                A_grad[i] = ptr->second[i] - parameter->lambdaA * rescalA[ptr->first * parameter->dimension + i];
             }
 
-            update_grad(embedA + parameter->dimension * ptr->first, A_grad,
-                        embedA_G + parameter->dimension * ptr->first,
+            update_grad(rescalA + parameter->dimension * ptr->first, A_grad,
+                        rescalA_G + parameter->dimension * ptr->first,
                         parameter->dimension, parameter);
         }
         delete[] A_grad;//cout<<"Free A-grd\n";
         delete[] grad4R;//cout<<"Free grad4R\n";
 
-        for(auto pair:grad4A_map){
+        for (auto pair:grad4A_map) {
             delete[] pair.second;
         }
         //cout<<"Free grad4A_map\n";
         //cout<<"Exiting update\n";
-        return true;
     }
 
-    void output(const int epoch) {
 
-        string output_path = parameter->output_path + "/" + to_string(epoch);
+    void eval(const int epoch) {
 
-        output_matrix(embedA, data->num_of_entity, parameter->dimension, "A_" + to_string(epoch) + ".dat", output_path);
-        output_matrix(embedR, data->num_of_relation, parameter->dimension, "R_" + to_string(epoch) + ".dat", output_path);
+        hit_rate testing_measure = eval_hit_rate(parameter, data, rescalA, rescalR);
 
-        if(parameter->optimization=="adagrad" || parameter->optimization=="adadelta"){
-            output_matrix(embedA_G, data->num_of_entity, parameter->dimension, "A_G_" + to_string(epoch) + ".dat", output_path);
-            output_matrix(embedR_G, data->num_of_relation, parameter->dimension, "R_G_" + to_string(epoch) + ".dat", output_path);
-        }
+        string prefix = "testing data >>> ";
 
+        print_hit_rate(prefix, parameter->hit_rate_topk, testing_measure);
     }
 
-    void update_4_A(const Sample &sample, unordered_map<int, value_type*> &grad4A_map, const value_type p_pre,
+    void output(const int epoch) {}
+
+protected:
+
+    void update_4_A(const Sample &sample, unordered_map<int, value_type *> &grad4A_map, const value_type p_pre,
                     const value_type n_pre) {
         //cout<<"Entering update4A\n";
         //DenseMatrix &R_k = rescalR[sample.relation_id];
-        value_type * R_k = embedR + sample.relation_id * parameter->dimension * parameter->dimension;
+        value_type *R_k = rescalR + sample.relation_id * parameter->dimension * parameter->dimension;
 
         //Vec p_tmp1 = prod(R_k, row(rescalA, sample.p_obj));
         value_type *p_tmp1 = new value_type[parameter->dimension];
         for (int i = 0; i < parameter->dimension; ++i) {
             p_tmp1[i] = 0;
             for (int j = 0; j < parameter->dimension; ++j) {
-                p_tmp1[i] += R_k[i * parameter->dimension + j] * embedA[sample.p_obj * parameter->dimension + j];
+                p_tmp1[i] += R_k[i * parameter->dimension + j] * rescalA[sample.p_obj * parameter->dimension + j];
             }
         }
 
@@ -160,7 +169,7 @@ private:
         for (int i = 0; i < parameter->dimension; ++i) {
             p_tmp2[i] = 0;
             for (int j = 0; j < parameter->dimension; ++j) {
-                p_tmp2[i] += embedA[sample.p_sub * parameter->dimension + j] * R_k[j * parameter->dimension + i];
+                p_tmp2[i] += rescalA[sample.p_sub * parameter->dimension + j] * R_k[j * parameter->dimension + i];
             }
         }
 
@@ -169,7 +178,7 @@ private:
         for (int i = 0; i < parameter->dimension; ++i) {
             n_tmp1[i] = 0;
             for (int j = 0; j < parameter->dimension; ++j) {
-                n_tmp1[i] += R_k[i * parameter->dimension + j] * embedA[sample.n_obj * parameter->dimension + j];
+                n_tmp1[i] += R_k[i * parameter->dimension + j] * rescalA[sample.n_obj * parameter->dimension + j];
             }
         }
 
@@ -178,7 +187,7 @@ private:
         for (int i = 0; i < parameter->dimension; ++i) {
             n_tmp2[i] = 0;
             for (int j = 0; j < parameter->dimension; ++j) {
-                n_tmp2[i] += embedA[sample.n_sub * parameter->dimension + j] * R_k[j * parameter->dimension + i];
+                n_tmp2[i] += rescalA[sample.n_sub * parameter->dimension + j] * R_k[j * parameter->dimension + i];
             }
         }
 
@@ -230,20 +239,20 @@ private:
             }
         }
 
-        delete [] p_tmp1;
-        delete [] p_tmp2;
-        delete [] n_tmp1;
-        delete [] n_tmp2;
+        delete[] p_tmp1;
+        delete[] p_tmp2;
+        delete[] n_tmp1;
+        delete[] n_tmp2;
         //cout<<"Exiting update4A\n";
     }
 
     void update_4_R(const Sample &sample, value_type *grad4R, const value_type p_pre, const value_type n_pre) {
         //cout<<"Entering update4R\n";
-        value_type *p_sub = embedA + sample.p_sub * parameter->dimension;
-        value_type *p_obj = embedA + sample.p_obj * parameter->dimension;
+        value_type *p_sub = rescalA + sample.p_sub * parameter->dimension;
+        value_type *p_obj = rescalA + sample.p_obj * parameter->dimension;
 
-        value_type *n_sub = embedA + sample.n_sub * parameter->dimension;
-        value_type *n_obj = embedA + sample.n_obj * parameter->dimension;
+        value_type *n_sub = rescalA + sample.n_sub * parameter->dimension;
+        value_type *n_obj = rescalA + sample.n_obj * parameter->dimension;
 
 
         //grad4R.clear();
@@ -262,7 +271,7 @@ private:
         }
 
 //        grad4R += - parameter->lambdaR * rescalR[sample.relation_id];
-        value_type *R_k = embedR + sample.relation_id * parameter->dimension * parameter->dimension;
+        value_type *R_k = rescalR + sample.relation_id * parameter->dimension * parameter->dimension;
 
         for (int i = 0; i < parameter->dimension; i++) {
             for (int j = 0; j < parameter->dimension; j++) {
@@ -270,10 +279,19 @@ private:
                         -parameter->lambdaR * R_k[i * parameter->dimension + j];
             }
         }
-        //TODO: Double check.
         //cout<<"Exiting update4R\n";
+    }
+
+public:
+    explicit RESCAL_NAIVE<OptimizerType>(Parameter &parameter, Data &data) : MarginBasedOptimizer<OptimizerType>(
+            parameter, data) {}
+
+    ~RESCAL_NAIVE() {
+        delete[] rescalA;
+        delete[] rescalR;
+        delete[] rescalA_G;
+        delete[] rescalR_G;
     }
 };
 
-
-#endif //DISTRESCAL_TRANSE_PREBATCH_FULL_H
+#endif //DISTRESCAL_RESCAL_NAIVE_MT_H

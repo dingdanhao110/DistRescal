@@ -63,7 +63,7 @@ public:
             for (int thread_index = 0; thread_index < parameter->num_of_thread; thread_index++) {
 
                 computation_thread_pool->schedule(std::bind([&](const int thread_index) {
-
+                    std::mt19937 *generator = new std::mt19937(clock() + std::hash<std::thread::id>()(std::this_thread::get_id()));
                     int start = thread_index * workload;
                     int end = std::min(start + workload, data->num_of_training_triples);
                     Sample sample;
@@ -71,7 +71,7 @@ public:
                         if (parameter->num_of_thread == 1) {
                             Sampler::random_sample(*data, sample, indices[n]);
                         } else {
-                            Sampler::random_sample_multithreaded(*data, sample, indices[n]);
+                            Sampler::random_sample_multithreaded(*data, sample, indices[n],generator);
                         }
                         //cout<<"Thread "<<std::this_thread::get_id()<<": Work assigned"<<endl;
                         update(sample);

@@ -1,9 +1,9 @@
 //
-// Created by dhding on 1/23/18.
+// Created by dhding on 3/1/18.
 //
 
-#ifndef DISTRESCAL_PREBATCH_OPTIMIZER_H
-#define DISTRESCAL_PREBATCH_OPTIMIZER_H
+#ifndef DISTRESCAL_PREBATCH_REL_OPTIMIZER_H
+#define DISTRESCAL_PREBATCH_REL_OPTIMIZER_H
 
 
 #include <fstream>
@@ -17,7 +17,7 @@
 #include "../util/Calculator.h"
 #include "../util/Parameter.h"
 #include "../alg/Optimizer.h"
-#include "../alg/PreBatchAssigner_full.h"
+#include "../alg/PreBatchAssigner_RelOnly.h"
 #include "../struct/SHeap.h"
 #include "splitEntity.h"
 
@@ -29,7 +29,7 @@ using namespace Calculator;
  * Margin based RESCAL_NOLOCK
  */
 template<typename OptimizerType>
-class PREBATCH_FULL_OPTIMIZER {
+class PREBATCH_REL_OPTIMIZER {
 public:
     /**
      * Start to train
@@ -55,8 +55,8 @@ public:
         int max_round = 1+ (parameter->epoch-1) / parameter->num_of_pre_its;
 
         vector<vector<vector<vector<int>>>> plan(parameter->num_of_pre_its,
-                                                std::vector<vector<vector<int>>>(parameter->num_of_thread,
-                                                                           std::vector<vector<int>>(0,std::vector<int>(0)) ));
+                                                 std::vector<vector<vector<int>>>(parameter->num_of_thread,
+                                                                                  std::vector<vector<int>>(0,std::vector<int>(0)) ));
         Samples samples(data,parameter);
         //vector<PreBatch_assigner> assigners(parameter->num_of_thread,PreBatch_assigner(parameter->num_of_thread,samples,plan));
 
@@ -92,7 +92,7 @@ public:
                     int start = thread_index * wl;
                     int end = std::min(start+wl, end_epoch-start_epoch);
                     //cout<<start<<" "<<end<<endl;
-                    PreBatch_assigner_full assigner(parameter->num_of_thread,samples,plan,
+                    PreBatch_assigner_rel assigner(parameter->num_of_thread,samples,plan,
                                                     parameter,freq_entities,
                                                     freq_relations);
                     //assigner.clean_up();
@@ -298,7 +298,7 @@ protected:
     void output(const int epoch) {}
 
 public:
-    explicit PREBATCH_FULL_OPTIMIZER<OptimizerType>(Parameter &parameter, Data &data):
+    explicit PREBATCH_REL_OPTIMIZER<OptimizerType>(Parameter &parameter, Data &data):
             statistics(data.num_of_entity,0),
             rel_statistics(data.num_of_relation,0),
             violation_vec(parameter.num_of_thread)
@@ -309,7 +309,7 @@ public:
         //block_size=this->data->num_of_entity/(parameter.num_of_thread*3+3)+1;
     }
 
-    ~PREBATCH_FULL_OPTIMIZER() {
+    ~PREBATCH_REL_OPTIMIZER() {
         delete[] embedA;
         delete[] embedR;
         delete[] embedA_G;
@@ -318,4 +318,4 @@ public:
     }
 };
 
-#endif //DISTRESCAL_PREBATCH_OPTIMIZER_H
+#endif //DISTRESCAL_PREBATCH_REL_OPTIMIZER_H
