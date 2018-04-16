@@ -36,6 +36,8 @@ public:
     bool L1_flag= false;//Using L1 norm or L2 norm for transE
     string optimization;
 
+    bool lock_profile = true;
+
     string output_path;
 
     string get_all() {

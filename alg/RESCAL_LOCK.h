@@ -5,6 +5,8 @@
 #ifndef DISTRESCAL_RESCAL_LOCK_H
 #define DISTRESCAL_RESCAL_LOCK_H
 
+//#define PROFILE
+
 #include "../util/Base.h"
 #include "../util/RandomUtil.h"
 #include "../util/Monitor.h"
@@ -52,6 +54,11 @@ public:
             violations = 0;
             loss = 0;
 
+            if (parameter->lock_profile)
+                for (int &i:contention) {
+                    i = 0;
+                }
+
             timer.start();
 
             std::random_shuffle(indices.begin(), indices.end());
@@ -70,7 +77,7 @@ public:
                             Sampler::random_sample_multithreaded(*data, sample, indices[n]);
                         }
                         //cout<<"Thread "<<std::this_thread::get_id()<<": Work assigned"<<endl;
-                        update(sample);
+                        update(sample, thread_index);
                     }
 
                 }, thread_index));
@@ -88,6 +95,13 @@ public:
 
             cout << "violations: " << violations << endl;
 
+            if (parameter->lock_profile) {
+                int cont = 0;
+                for (int i:contention) {
+                    cont += i;
+                }
+                cout << "contested locks: " << cont << endl;
+            }
             if(parameter->show_loss) {
 
                 timer.start();
@@ -135,6 +149,8 @@ protected:
     std::mutex* A_locks;
     std::mutex* R_locks;
 
+    vector<int> contention;
+
     value_type *rescalA;//DenseMatrix, UNSAFE!
     value_type *rescalR;//vector<DenseMatrix>, UNSAFE!
     value_type *rescalA_G;//DenseMatrix, UNSAFE!
@@ -181,7 +197,7 @@ protected:
         }
     }
 
-    void update(const Sample &sample) {
+    void update(const Sample &sample, const int thread_index) {
         //cout<<sample.relation_id<<" "<<sample.p_obj<<" "<<sample.p_sub<<" "<<sample.n_obj<<" "<<sample.n_sub<<endl;
 
         set<int> to_lock;
@@ -195,29 +211,79 @@ protected:
             locks.emplace_back(A_locks[l], std::defer_lock);
         }
         locks.emplace_back(R_locks[sample.relation_id],std::defer_lock);
-        switch (locks.size())
-        {
-            case 0:
-                break;
-            case 1:
-                locks.front().lock();
-                break;
-            case 2:
-                std::lock(locks[0], locks[1]);
-                break;
-            case 3:
-                std::lock(locks[0], locks[1], locks[2]);
-                break;
-            case 4:
-                std::lock(locks[0], locks[1], locks[2], locks[3]);
-                break;
-            case 5:
-                std::lock(locks[0], locks[1], locks[2], locks[3], locks[4]);
-                break;
-            default:
-                throw "oops";
-        }
 
+        int lock_result;
+        if (parameter->lock_profile) {
+            switch (locks.size()) {
+                case 2:
+                    lock_result = std::try_lock(locks[0], locks[1]);
+                    break;
+                case 3:
+                    lock_result = std::try_lock(locks[0], locks[1], locks[2]);
+                    break;
+                case 4:
+                    lock_result = std::try_lock(locks[0], locks[1], locks[2], locks[3]);
+                    break;
+                case 5:
+                    lock_result = std::try_lock(locks[0], locks[1], locks[2], locks[3], locks[4]);
+                    break;
+                default:
+                    throw "oops";
+            }
+
+            if (lock_result == -1) {
+                //lock success!
+                //do nothing
+            } else {
+                //count lock contention
+                ++contention[thread_index];
+                //wait and lock again
+                switch (locks.size()) {
+                    case 0:
+                        break;
+                    case 1:
+                        locks.front().lock();
+                        break;
+                    case 2:
+                        std::lock(locks[0], locks[1]);
+                        break;
+                    case 3:
+                        std::lock(locks[0], locks[1], locks[2]);
+                        break;
+                    case 4:
+                        std::lock(locks[0], locks[1], locks[2], locks[3]);
+                        break;
+                    case 5:
+                        std::lock(locks[0], locks[1], locks[2], locks[3], locks[4]);
+                        break;
+                    default:
+                        throw "oops";
+                }
+            }
+        } else {
+            //do not profile locks
+            switch (locks.size()) {
+                case 0:
+                    break;
+                case 1:
+                    locks.front().lock();
+                    break;
+                case 2:
+                    std::lock(locks[0], locks[1]);
+                    break;
+                case 3:
+                    std::lock(locks[0], locks[1], locks[2]);
+                    break;
+                case 4:
+                    std::lock(locks[0], locks[1], locks[2], locks[3]);
+                    break;
+                case 5:
+                    std::lock(locks[0], locks[1], locks[2], locks[3], locks[4]);
+                    break;
+                default:
+                    throw "oops";
+            }
+        }
 
         //cout<<"Thread "<<std::this_thread::get_id()<<": lock set!"<<endl;
 
@@ -422,7 +488,8 @@ protected:
     }
 
 public:
-    explicit RESCAL_LOCK<OptimizerType>(Parameter &parameter, Data &data) {
+    explicit RESCAL_LOCK<OptimizerType>(Parameter &parameter, Data &data) :
+            contention(parameter.num_of_thread, 0) {
         this->parameter=&parameter;
         this->data=&data;
         computation_thread_pool = new pool(parameter.num_of_thread);
