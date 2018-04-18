@@ -66,7 +66,7 @@ public:
             thread_wl[thread_index].first = thread_index * (parameter->dimension / parameter->num_of_thread);
             thread_wl[thread_index].second = min((thread_index + 1) * (parameter->dimension / parameter->num_of_thread),
                                                  parameter->dimension);
-            cout << thread_wl[thread_index].first << " " << thread_wl[thread_index].second << endl;
+//            cout << thread_wl[thread_index].first << " " << thread_wl[thread_index].second << endl;
 
 
         }
