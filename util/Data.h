@@ -230,7 +230,7 @@ private:
 
         std::vector<int> rel2newid(relation_counter.size());
         std::iota(std::begin(rel2newid), std::end(rel2newid), 0);
-        std::random_shuffle(rel2newid.begin(), rel2newid.end());
+//        std::random_shuffle(rel2newid.begin(), rel2newid.end());
 //        std::vector<int> newid2rel(relation_counter.size());
 //        for(int i=0;i<relation_counter.size();++i){
 //            newid2rel[rel2newid[i]]=i;
@@ -238,7 +238,7 @@ private:
 
         std::vector<int> entity2newid(entity_counter.size());
         std::iota(std::begin(entity2newid), std::end(entity2newid), 0);
-        std::random_shuffle(entity2newid.begin(), entity2newid.end());
+//        std::random_shuffle(entity2newid.begin(), entity2newid.end());
 //        std::vector<int> newid2entity(entity_counter.size());
 //        for(int i=0;i<entity_counter.size();++i){
 //            newid2entity[entity2newid[i]]=i;

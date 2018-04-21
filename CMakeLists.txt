@@ -53,7 +53,7 @@ set(util
 
 set(struct
     struct/Triple.h
-    struct/Tuple.h struct/Sample.h struct/Bucket.h struct/Scheduler.h struct/Scheduler2.h struct/Batch.h struct/Samples.h struct/SHeap.h alg/Naive_Optimizer.h)
+        struct/Tuple.h struct/Sample.h struct/Bucket.h struct/Scheduler.h struct/Scheduler2.h struct/Batch.h struct/Samples.h struct/SHeap.h alg/Naive_Optimizer.h struct/DependancyGraph.h)
 
 set(threadpool
     extern/boost/threadpool.hpp)
@@ -94,3 +94,5 @@ add_executable(testSplitEntity src/testSplitEntity.cpp)
 add_executable(runPRINT_STAT src/runPrintStatistics.cpp)
 
 add_executable(testConditionVariable src/testConditionVariable.cpp)
+
+add_executable(runMetisPreprocess src/runMetisPreprocess.cpp)
