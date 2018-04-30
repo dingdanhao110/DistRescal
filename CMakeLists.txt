@@ -3,6 +3,8 @@ project(DistRESCAL)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -DNDEBUG -pthread -march=native -ftree-vectorize")
 
+include_directories(~/Ding_Workspace/lib/Metis/include)
+link_directories(/home/huilee/Ding_Workspace/lib/Metis/lib)
 ## look for boost
 find_package(Boost COMPONENTS thread program_options system filesystem)
 if(NOT ${Boost_FOUND})
@@ -25,6 +27,16 @@ if(MKL_FOUND)
     include_directories(${MKL_INCLUDE_DIRS})
     link_directories(${MKL_LIBRARIES})
 endif()
+
+#### MPI
+find_package(MPI REQUIRED)
+if (MPI_FOUND)
+    message(STATUS "MPI found " ${MPI_INCLUDE_PATH})
+    include_directories(SYSTEM ${MPI_INCLUDE_PATH})
+    link_directories(${MPI_LIBRARIES})
+else (MPI_FOUND)
+    message(SEND_ERROR "This application cannot compile without MPI")
+endif (MPI_FOUND)
 
 set(alg
     alg/Sampler.h
@@ -58,12 +70,13 @@ set(struct
 set(threadpool
     extern/boost/threadpool.hpp)
 
-add_library(lib SHARED ${lib_HDRS} ${lib_SRCS} ${threadpool})
-set_target_properties(lib PROPERTIES LINKER_LANGUAGE CXX)
 
 add_library(DistRESCAL SHARED ${alg} ${util} ${struct} ${threadpool})
 set_target_properties(DistRESCAL PROPERTIES LINKER_LANGUAGE CXX)
-link_libraries(DistRESCAL ${Boost_LIBRARIES} ${MKL_LIBRARIES})
+
+find_library(METIS_LIBRARY libmetis.a HINTS /home/huilee/Ding_Workspace/lib/Metis/lib)
+
+link_libraries(DistRESCAL ${Boost_LIBRARIES} ${MKL_LIBRARIES} ${METIS_LIBRARY} ${MPI_LIBRARIES})
 
 add_executable(testThreadPool src/testThreadPool.cpp)
 add_executable(testMatrixProduct src/testMatrixProduct.cpp)
@@ -80,7 +93,7 @@ add_executable(runRESCAL_ASYNC src/runRESCAL_ASYNC.cpp)
 add_executable(runRESCAL_PREBATCH src/runRESCAL_PREBATCH.cpp)
 add_executable(runRESCAL_PREBATCH_FULL src/runRESCAL_PREBATCH_FULL.cpp)
 add_executable(runRESCAL_PREBATCH_REL src/runRESCAL_PREBATCH_REL.cpp)
-add_executable(runRESCAL_H2 src/runRESCAL_H2.cpp)
+#add_executable(runRESCAL_H2 src/runRESCAL_H2.cpp)
 add_executable(runRESCAL_NAIVE_mt src/runRESCAL_NAIVE_mt.cpp)
 add_executable(runRESCAL_PARA src/runRESCAL_PARA.cpp)
 
@@ -96,3 +109,4 @@ add_executable(runPRINT_STAT src/runPrintStatistics.cpp)
 add_executable(testConditionVariable src/testConditionVariable.cpp)
 
 add_executable(runMetisPreprocess src/runMetisPreprocess.cpp)
+add_executable(testMPI src/testMPI.cpp)
