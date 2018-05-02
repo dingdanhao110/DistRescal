@@ -2,6 +2,7 @@
 // Created by dhding on 4/30/18.
 //
 #include "mpi.h"
+#include "metis.h"
 #include <cstdlib>
 
 #include "../util/Base.h"
@@ -17,12 +18,12 @@ void print_info(Parameter &parameter, Data &data) {
 }
 
 int main(int argc, char *argv[]) {
-    MPI_Init(&argc, &argv);
+    MPI_Init(NULL, NULL);
 
-    cout << argc << endl;
-    for (int i = 0; i < argc; ++i) {
-        cout << argv[i] << endl;
-    }
+//    cout << argc << endl;
+//    for (int i = 0; i < argc; ++i) {
+//        cout << argv[i] << endl;
+//    }
 
     Parameter parameter;
 
@@ -70,7 +71,11 @@ int main(int argc, char *argv[]) {
         parameter.num_of_eval_thread = (num_of_thread == 0) ? 1 : num_of_thread;
     }
 
+    Data data;
+    data.prepare_data(parameter.train_data_path, parameter.valid_data_path, parameter.test_data_path);
+//  data.output_decoder(parameter.output_path);
 
+    print_info(parameter, data);
 
 
     // Get the number of processes
@@ -90,6 +95,120 @@ int main(int argc, char *argv[]) {
     printf("Hello world from processor %s, rank %d"
                    " out of %d processors\n",
            processor_name, world_rank, world_size);
+
+
+    //Step 0: generate graph and save according to world rank...
+
+    //first partition the training set into k equal workloads
+    int workload = data.num_of_training_triples / world_size;
+    int start = world_rank * workload;
+    int end = std::min(data.num_of_training_triples, start + workload);
+
+    //transform training sample into undirected graph
+    const int n = data.num_of_training_triples;
+    int64_t m = 0;//number of total edges induced by [start,end) entities
+
+    //need to calculate m first;
+    for (int i = start; i < end; ++i) {
+        for (int j = 0; j < n; ++j) {
+            if (i != j) {
+                //judge whether i and j conflict with each other..
+                if (data.training_triples[i].relation == data.training_triples[j].relation ||
+                    data.training_triples[i].object == data.training_triples[j].subject ||
+                    data.training_triples[i].object == data.training_triples[j].object ||
+                    data.training_triples[i].subject == data.training_triples[j].subject ||
+                    data.training_triples[i].subject == data.training_triples[j].object) {
+                    ++m;
+                }
+            }
+        }
+    }
+    cout << "machine " << world_rank << ": " << m << endl;
+
+    //Step 1: save to METIS style
+    //Transform undirected graph into METIS input format
+    idx_t *xadj = new idx_t[end - start + 1];
+    idx_t *adjncy = new idx_t[m];
+
+    int64_t count = 0;
+    for (int i = start; i < end; ++i) {
+        xadj[i] = count;
+        for (int j = 0; j < n; ++j) {
+            if (i != j) {
+                //judge whether i and j conflict with each other..
+                if (data.training_triples[i].relation == data.training_triples[j].relation ||
+                    data.training_triples[i].object == data.training_triples[j].subject ||
+                    data.training_triples[i].object == data.training_triples[j].object ||
+                    data.training_triples[i].subject == data.training_triples[j].subject ||
+                    data.training_triples[i].subject == data.training_triples[j].object) {
+                    //conflict
+                    adjncy[count] = j;
+                    ++count;
+                }
+            }
+        }
+    }
+    xadj[end - start] = count;
+//    cout<<"m="<<m<<" count="<<count<<endl;
+
+    //Step 2: call parMetis
+    //Run metis algorithm
+    idx_t nvtxs = n;//The number of vertices in the graph.
+    idx_t ncon = 1;//The number of balancing constraints. It should be at least 1.
+    idx_t nparts = parameter.num_of_thread;
+    idx_t objval = 0;
+    idx_t *part = new idx_t[nvtxs];
+
+    idx_t options[METIS_NOPTIONS];
+    options[METIS_OPTION_PTYPE] = METIS_PTYPE_KWAY;
+    options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+    options[METIS_OPTION_CTYPE] = METIS_CTYPE_SHEM;
+    options[METIS_OPTION_IPTYPE] = METIS_IPTYPE_GROW;
+    options[METIS_OPTION_RTYPE] = METIS_RTYPE_FM;
+    options[METIS_OPTION_NCUTS] = 1;
+    options[METIS_OPTION_NSEPS] = 1;
+    options[METIS_OPTION_NUMBERING] = 0;
+    options[METIS_OPTION_MINCONN] = 1;
+    options[METIS_OPTION_NO2HOP] = 0;
+    options[METIS_OPTION_CONTIG] = 1;
+    options[METIS_OPTION_CCORDER] = 1;
+    options[METIS_OPTION_PFACTOR] = 100;
+    options[METIS_OPTION_UFACTOR] = 100;
+    options[METIS_OPTION_DBGLVL] = METIS_DBG_INFO | METIS_DBG_TIME;
+
+    int result = METIS_PartGraphKway(&nvtxs, &ncon, xadj, adjncy,
+                                     NULL /*vwgt*/, NULL /*vsize*/, NULL /*adjwgt*/, &nparts, NULL /*tpwgts*/,
+                                     NULL /*ubvec*/, options, &objval, part);
+
+//    METIS_SetDefaultOptions(options);
+
+    switch (result) {
+        case METIS_OK:
+            cout << "the function returned normally!\n";
+            break;
+        case METIS_ERROR_INPUT:
+            cerr << "an input error\n";
+            exit(-1);
+        case METIS_ERROR_MEMORY:
+            cerr << "could not allocate the required memory \n";
+            exit(-1);
+        case METIS_ERROR:
+            cerr << "Other errors..\n";
+            exit(-1);
+    }
+
+    //Step 3: save partition result to local file
+    //(/*id*/ threadID)
+    //dump partition to file
+    string dump_file_str = string("Partition_") + to_string(world_rank);
+    fstream fout(dump_file_str.c_str());
+    for (int i = 0; i < nvtxs; ++i) {
+        fout << part[i] << endl;
+    }
+    fout << endl;
+    fout.close();
+
+
 
     // Finalize the MPI environment.
     MPI_Finalize();
