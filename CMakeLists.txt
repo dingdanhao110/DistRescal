@@ -75,8 +75,9 @@ add_library(DistRESCAL SHARED ${alg} ${util} ${struct} ${threadpool})
 set_target_properties(DistRESCAL PROPERTIES LINKER_LANGUAGE CXX)
 
 find_library(METIS_LIBRARY libmetis.a HINTS /home/huilee/Ding_Workspace/lib/Metis/lib)
+find_library(PARMETIS_LIBRARY libparmetis.a HINTS /home/huilee/Ding_Workspace/lib/Metis/lib)
 
-link_libraries(DistRESCAL ${Boost_LIBRARIES} ${MKL_LIBRARIES} ${METIS_LIBRARY} ${MPI_LIBRARIES})
+link_libraries(DistRESCAL ${Boost_LIBRARIES} ${MKL_LIBRARIES} ${METIS_LIBRARY} ${MPI_LIBRARIES} ${PARMETIS_LIBRARY})
 
 add_executable(testThreadPool src/testThreadPool.cpp)
 add_executable(testMatrixProduct src/testMatrixProduct.cpp)

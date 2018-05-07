@@ -2,7 +2,8 @@
 // Created by dhding on 4/30/18.
 //
 #include "mpi.h"
-#include "metis.h"
+//#include "metis.h"
+#include "parmetis.h"
 #include <cstdlib>
 
 #include "../util/Base.h"
@@ -77,7 +78,7 @@ int main(int argc, char *argv[]) {
 
     print_info(parameter, data);
 
-
+    MPI_Comm comm_world = MPI_COMM_WORLD;
     // Get the number of processes
     int world_size;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
@@ -103,6 +104,12 @@ int main(int argc, char *argv[]) {
     int workload = data.num_of_training_triples / world_size;
     int start = world_rank * workload;
     int end = std::min(data.num_of_training_triples, start + workload);
+
+    idx_t *vtxdist = new idx_t[world_size + 1];
+    for (int i = 0; i < world_size; ++i) {
+        vtxdist[i] = i * workload;
+    }
+    vtxdist[world_size] = data.num_of_training_triples;
 
     //transform training sample into undirected graph
     const int n = data.num_of_training_triples;
@@ -157,7 +164,9 @@ int main(int argc, char *argv[]) {
     idx_t ncon = 1;//The number of balancing constraints. It should be at least 1.
     idx_t nparts = parameter.num_of_thread;
     idx_t objval = 0;
-    idx_t *part = new idx_t[nvtxs];
+    idx_t *part = new idx_t[end - start + 1];
+
+
 
     idx_t options[METIS_NOPTIONS];
     options[METIS_OPTION_PTYPE] = METIS_PTYPE_KWAY;
@@ -176,9 +185,10 @@ int main(int argc, char *argv[]) {
     options[METIS_OPTION_UFACTOR] = 100;
     options[METIS_OPTION_DBGLVL] = METIS_DBG_INFO | METIS_DBG_TIME;
 
-    int result = METIS_PartGraphKway(&nvtxs, &ncon, xadj, adjncy,
-                                     NULL /*vwgt*/, NULL /*vsize*/, NULL /*adjwgt*/, &nparts, NULL /*tpwgts*/,
-                                     NULL /*ubvec*/, options, &objval, part);
+
+    int result = ParMETIS_V3_PartKway(vtxdist, &nvtxs, &ncon, xadj, adjncy,
+                                      NULL /*vwgt*/, NULL /*vsize*/, NULL /*adjwgt*/, &nparts, NULL /*tpwgts*/,
+                                      NULL /*ubvec*/, options, &objval, part, &comm_world);
 
 //    METIS_SetDefaultOptions(options);
 
@@ -200,9 +210,9 @@ int main(int argc, char *argv[]) {
     //Step 3: save partition result to local file
     //(/*id*/ threadID)
     //dump partition to file
-    string dump_file_str = string("Partition_") + to_string(world_rank);
+    string dump_file_str = string("Partition_") + to_string(world_rank) + ".txt";
     fstream fout(dump_file_str.c_str());
-    for (int i = 0; i < nvtxs; ++i) {
+    for (int i = 0; i < end - start; ++i) {
         fout << part[i] << endl;
     }
     fout << endl;
