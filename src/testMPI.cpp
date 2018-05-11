@@ -5,6 +5,7 @@
 //#include "metis.h"
 #include "parmetis.h"
 #include <cstdlib>
+#include <string>
 
 #include "../util/Base.h"
 #include "../util/FileUtil.h"
@@ -20,7 +21,6 @@ void print_info(Parameter &parameter, Data &data) {
 
 int main(int argc, char *argv[]) {
     MPI_Init(NULL, NULL);
-
 //    cout << argc << endl;
 //    for (int i = 0; i < argc; ++i) {
 //        cout << argv[i] << endl;
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
     data.prepare_data(parameter.train_data_path, parameter.valid_data_path, parameter.test_data_path);
 //  data.output_decoder(parameter.output_path);
 
-    print_info(parameter, data);
+//    print_info(parameter, data);
 
     MPI_Comm comm_world = MPI_COMM_WORLD;
     // Get the number of processes
@@ -93,10 +93,14 @@ int main(int argc, char *argv[]) {
     MPI_Get_processor_name(processor_name, &name_len);
 
     // Print off a hello world message
-    printf("Hello world from processor %s, rank %d"
-                   " out of %d processors\n",
-           processor_name, world_rank, world_size);
+//    printf("Hello world from processor %s, rank %d"
+//                   " out of %d processors\n",
+//           processor_name, world_rank, world_size);
 
+    string logfile = "log";
+    logfile += to_string(world_rank) + ".txt";
+    fstream fout(logfile.c_str());
+    fout << "Hello world from rank" << world_rank << " out of " << world_size << " processors\n";
 
     //Step 0: generate graph and save according to world rank...
 
@@ -130,8 +134,8 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-    cout << "machine " << world_rank << ": " << m << endl;
-
+//    cout << "machine " << world_rank << ": " << m << endl;
+    fout << "machine " << world_rank << ": " << m << endl;
     //Step 1: save to METIS style
     //Transform undirected graph into METIS input format
     idx_t *xadj = new idx_t[end - start + 1];
@@ -194,16 +198,16 @@ int main(int argc, char *argv[]) {
 
     switch (result) {
         case METIS_OK:
-            cout << "the function returned normally!\n";
+            fout << "the function returned normally!\n";
             break;
         case METIS_ERROR_INPUT:
-            cerr << "an input error\n";
+            fout << "an input error\n";
             exit(-1);
         case METIS_ERROR_MEMORY:
-            cerr << "could not allocate the required memory \n";
+            fout << "could not allocate the required memory \n";
             exit(-1);
         case METIS_ERROR:
-            cerr << "Other errors..\n";
+            fout << "Other errors..\n";
             exit(-1);
     }
 
@@ -211,11 +215,12 @@ int main(int argc, char *argv[]) {
     //(/*id*/ threadID)
     //dump partition to file
     string dump_file_str = string("Partition_") + to_string(world_rank) + ".txt";
-    fstream fout(dump_file_str.c_str());
+    fstream fout2(dump_file_str.c_str());
     for (int i = 0; i < end - start; ++i) {
-        fout << part[i] << endl;
+        fout2 << part[i] << endl;
     }
-    fout << endl;
+    fout2 << endl;
+    fout2.close();
     fout.close();
 
 

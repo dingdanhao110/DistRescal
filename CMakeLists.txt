@@ -3,8 +3,8 @@ project(DistRESCAL)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -DNDEBUG -pthread -march=native -ftree-vectorize")
 
-include_directories(~/Ding_Workspace/lib/Metis/include)
-link_directories(/home/huilee/Ding_Workspace/lib/Metis/lib)
+include_directories(~/local/include)
+link_directories(~/local/lib)
 ## look for boost
 find_package(Boost COMPONENTS thread program_options system filesystem)
 if(NOT ${Boost_FOUND})
@@ -74,8 +74,8 @@ set(threadpool
 add_library(DistRESCAL SHARED ${alg} ${util} ${struct} ${threadpool})
 set_target_properties(DistRESCAL PROPERTIES LINKER_LANGUAGE CXX)
 
-find_library(METIS_LIBRARY libmetis.a HINTS /home/huilee/Ding_Workspace/lib/Metis/lib)
-find_library(PARMETIS_LIBRARY libparmetis.a HINTS /home/huilee/Ding_Workspace/lib/Metis/lib)
+find_library(METIS_LIBRARY libmetis.a HINTS ~/local/lib)
+find_library(PARMETIS_LIBRARY libparmetis.a HINTS ~/local/lib)
 
 link_libraries(DistRESCAL ${Boost_LIBRARIES} ${MKL_LIBRARIES} ${METIS_LIBRARY} ${MPI_LIBRARIES} ${PARMETIS_LIBRARY})
 

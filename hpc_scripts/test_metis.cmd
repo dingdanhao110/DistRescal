@@ -26,7 +26,7 @@
 ###    Queue fourday : Walltime can be  24:00:01 to 96:00:00                  #
 ###  #PBS -q parallel                                                         #
 ###############################################################################
-#PBS -q parallel
+#PBS -q fourday
 
 ###  Wall time required. This example is 30 min  ##############################
 ###  #PBS -l walltime=00:30:00                   			      #
@@ -37,7 +37,7 @@
 ###  For serial program, 1 core is used					      #
 ###  #PBS -l nodes=1:ppn=1						      #
 ###############################################################################
-#PBS -l nodes=8:ppn=16
+#PBS -l nodes=1:ppn=20
 
 ###############################################################################
 #The following stuff will be executed in the first allocated node.            #
