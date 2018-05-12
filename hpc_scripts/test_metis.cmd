@@ -39,13 +39,24 @@
 ###############################################################################
 #PBS -l nodes=1:ppn=20
 
-###############################################################################
-#The following stuff will be executed in the first allocated node.            #
-#Please don't modify it                                                       #
-#                                                                             #
+#############################################################################
+#The following stuff will be executed in the first allocated node.          #
+#Please don't modify it                                                     #
+#                                                                           #
 echo $PBS_JOBID : `wc -l < $PBS_NODEFILE` CPUs allocated: `cat $PBS_NODEFILE`
 PATH=$PBS_O_PATH
+# Define number of processors
+NPROCS=`wc -l < $PBS_NODEFILE`
+NNODES=`uniq $PBS_NODEFILE | wc -l`
+NCORES=$((NPROCS / NNODES))
+
+# Create nodefile (with duplicates removed)
 JID=`echo ${PBS_JOBID}| sed "s/.hpc2015-mgt.hku.hk//"`
+HOSTFILE=/tmp/host.job.$JID
+MACHFILE=/tmp/machine.job.$JID
+cat $PBS_NODEFILE | /usr/bin/uniq | /bin/awk -v nc=$NCORES '{print $1" slots="nc}' > $HOSTFILE
+cat $PBS_NODEFILE | /usr/bin/uniq | /bin/awk -v nc=$NCORES '{print $1":"nc}' > $MACHFILE
+
 ###############################################################################
 
 echo ===========================================================
@@ -56,10 +67,11 @@ echo "Job Start Time is `date "+%Y/%m/%d -- %H:%M:%S"`"
 cd $PBS_O_WORKDIR
 OUTFILE=${PBS_JOBNAME}.${JID}
 
+rm -rf build-rk
 mkdir -p build-rk
 cd build-rk
 cmake ../../
-make
+make -j8
 
 train_file="../../data/WN18/wordnet-mlj12-train.txt"
 test_file="../../data/WN18/wordnet-mlj12-test.txt"
@@ -72,9 +84,13 @@ epoch=2000
 p_epoch=2000
 o_epoch=2000
 
-mpirun -np ${NPROCS} -machinefile ${MACHFILE} ./testMPI --n $n --t_path $train_file --v_path $valid_file --e_path $test_file
+module load mpich/gcc
+mpiexec -n ${NPROCS} ./testMPI --n $n --t_path $train_file --v_path $valid_file --e_path $test_file >> ${OUTFILE}
 
 echo "Job Finish Time is `date "+%Y/%m/%d -- %H:%M:%S"`"
 mv $HOME/${PBS_JOBNAME}.e${JID} $HOME/${PBS_JOBNAME}.o${JID} $PBS_O_WORKDIR
+
+rm -f ${HOSTFILE}
+rm -f ${MACHFILE}
 
 exit 0

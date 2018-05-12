@@ -76,7 +76,6 @@ int main(int argc, char *argv[]) {
     data.prepare_data(parameter.train_data_path, parameter.valid_data_path, parameter.test_data_path);
 //  data.output_decoder(parameter.output_path);
 
-//    print_info(parameter, data);
 
     MPI_Comm comm_world = MPI_COMM_WORLD;
     // Get the number of processes
@@ -92,15 +91,15 @@ int main(int argc, char *argv[]) {
     int name_len;
     MPI_Get_processor_name(processor_name, &name_len);
 
-    // Print off a hello world message
-//    printf("Hello world from processor %s, rank %d"
-//                   " out of %d processors\n",
-//           processor_name, world_rank, world_size);
+
+    if (world_rank == 0) {
+        print_info(parameter, data);
+    }
 
     string logfile = "log";
     logfile += to_string(world_rank) + ".txt";
     fstream fout(logfile.c_str());
-    fout << "Hello world from rank" << world_rank << " out of " << world_size << " processors\n";
+//    fout << "Hello world from rank" << world_rank << " out of " << world_size << " processors\n";
 
     //Step 0: generate graph and save according to world rank...
 
@@ -135,7 +134,6 @@ int main(int argc, char *argv[]) {
         }
     }
 //    cout << "machine " << world_rank << ": " << m << endl;
-    fout << "machine " << world_rank << ": " << m << endl;
     //Step 1: save to METIS style
     //Transform undirected graph into METIS input format
     idx_t *xadj = new idx_t[end - start + 1];
@@ -163,52 +161,67 @@ int main(int argc, char *argv[]) {
 //    cout<<"m="<<m<<" count="<<count<<endl;
 
     //Step 2: call parMetis
-    //Run metis algorithm
+    //Run parmetis algorithm
     idx_t nvtxs = n;//The number of vertices in the graph.
     idx_t ncon = 1;//The number of balancing constraints. It should be at least 1.
     idx_t nparts = parameter.num_of_thread;
     idx_t objval = 0;
     idx_t *part = new idx_t[end - start + 1];
 
+    idx_t options[3];
+    options[0] = 1;
+    options[1] = 127;
+//    idx_t options[METIS_NOPTIONS];
+//    options[METIS_OPTION_PTYPE] = METIS_PTYPE_KWAY;
+//    options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+//    options[METIS_OPTION_CTYPE] = METIS_CTYPE_SHEM;
+//    options[METIS_OPTION_IPTYPE] = METIS_IPTYPE_GROW;
+//    options[METIS_OPTION_RTYPE] = METIS_RTYPE_FM;
+//    options[METIS_OPTION_NCUTS] = 1;
+//    options[METIS_OPTION_NSEPS] = 1;
+//    options[METIS_OPTION_NUMBERING] = 0;
+//    options[METIS_OPTION_MINCONN] = 1;
+//    options[METIS_OPTION_NO2HOP] = 0;
+//    options[METIS_OPTION_CONTIG] = 1;
+//    options[METIS_OPTION_CCORDER] = 1;
+//    options[METIS_OPTION_PFACTOR] = 100;
+//    options[METIS_OPTION_UFACTOR] = 100;
+//    options[METIS_OPTION_DBGLVL] = METIS_DBG_INFO | METIS_DBG_TIME;
 
+    idx_t wgtflag = 0;
+    idx_t numflag = 0;
 
-    idx_t options[METIS_NOPTIONS];
-    options[METIS_OPTION_PTYPE] = METIS_PTYPE_KWAY;
-    options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
-    options[METIS_OPTION_CTYPE] = METIS_CTYPE_SHEM;
-    options[METIS_OPTION_IPTYPE] = METIS_IPTYPE_GROW;
-    options[METIS_OPTION_RTYPE] = METIS_RTYPE_FM;
-    options[METIS_OPTION_NCUTS] = 1;
-    options[METIS_OPTION_NSEPS] = 1;
-    options[METIS_OPTION_NUMBERING] = 0;
-    options[METIS_OPTION_MINCONN] = 1;
-    options[METIS_OPTION_NO2HOP] = 0;
-    options[METIS_OPTION_CONTIG] = 1;
-    options[METIS_OPTION_CCORDER] = 1;
-    options[METIS_OPTION_PFACTOR] = 100;
-    options[METIS_OPTION_UFACTOR] = 100;
-    options[METIS_OPTION_DBGLVL] = METIS_DBG_INFO | METIS_DBG_TIME;
+    real_t *ubvec = new real_t[ncon];
+    ubvec[0] = 1.05;
 
+    real_t *tpwgts = new real_t[ncon * nparts];
+    for (int i = 0; i < ncon * nparts; ++i) {
+        tpwgts[i] = 1.0 / nparts;
+    }
 
-    int result = ParMETIS_V3_PartKway(vtxdist, &nvtxs, &ncon, xadj, adjncy,
-                                      NULL /*vwgt*/, NULL /*vsize*/, NULL /*adjwgt*/, &nparts, NULL /*tpwgts*/,
-                                      NULL /*ubvec*/, options, &objval, part, &comm_world);
+    int result = ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, NULL /*vwgt*/, NULL /*adjwgt*/, &wgtflag,
+                                      &numflag, &ncon, &nparts, tpwgts,
+                                      ubvec, options, &objval, part, &comm_world);
 
 //    METIS_SetDefaultOptions(options);
 
-    switch (result) {
-        case METIS_OK:
-            fout << "the function returned normally!\n";
-            break;
-        case METIS_ERROR_INPUT:
-            fout << "an input error\n";
-            exit(-1);
-        case METIS_ERROR_MEMORY:
-            fout << "could not allocate the required memory \n";
-            exit(-1);
-        case METIS_ERROR:
-            fout << "Other errors..\n";
-            exit(-1);
+    if (world_rank == 0) {
+        switch (result) {
+            case METIS_OK:
+                cout << "the function returned normally!\n";
+                break;
+            case METIS_ERROR_INPUT:
+                cout << "an input error\n";
+                exit(-1);
+            case METIS_ERROR_MEMORY:
+                cout << "could not allocate the required memory \n";
+                exit(-1);
+            case METIS_ERROR:
+                cout << "Other errors..\n";
+                exit(-1);
+        }
+
+        cout << "Total edges cut:" << objval << endl;
     }
 
     //Step 3: save partition result to local file
