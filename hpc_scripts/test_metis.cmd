@@ -26,7 +26,7 @@
 ###    Queue fourday : Walltime can be  24:00:01 to 96:00:00                  #
 ###  #PBS -q parallel                                                         #
 ###############################################################################
-#PBS -q fourday
+#PBS -q parallel
 
 ###  Wall time required. This example is 30 min  ##############################
 ###  #PBS -l walltime=00:30:00                   			      #
@@ -37,7 +37,7 @@
 ###  For serial program, 1 core is used					      #
 ###  #PBS -l nodes=1:ppn=1						      #
 ###############################################################################
-#PBS -l nodes=1:ppn=20
+#PBS -l nodes=4:ppn=20
 
 #############################################################################
 #The following stuff will be executed in the first allocated node.          #
@@ -67,6 +67,8 @@ echo "Job Start Time is `date "+%Y/%m/%d -- %H:%M:%S"`"
 cd $PBS_O_WORKDIR
 OUTFILE=${PBS_JOBNAME}.${JID}
 
+module load mpich/gcc
+
 rm -rf build-rk
 mkdir -p build-rk
 cd build-rk
@@ -84,7 +86,6 @@ epoch=2000
 p_epoch=2000
 o_epoch=2000
 
-module load mpich/gcc
 mpiexec -n ${NPROCS} ./testMPI --n $n --t_path $train_file --v_path $valid_file --e_path $test_file >> ${OUTFILE}
 
 echo "Job Finish Time is `date "+%Y/%m/%d -- %H:%M:%S"`"

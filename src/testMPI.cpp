@@ -1,6 +1,7 @@
 //
 // Created by dhding on 4/30/18.
 //
+#define DEBUG
 #include "mpi.h"
 //#include "metis.h"
 #include "parmetis.h"
@@ -21,10 +22,6 @@ void print_info(Parameter &parameter, Data &data) {
 
 int main(int argc, char *argv[]) {
     MPI_Init(NULL, NULL);
-//    cout << argc << endl;
-//    for (int i = 0; i < argc; ++i) {
-//        cout << argv[i] << endl;
-//    }
 
     Parameter parameter;
 
@@ -76,7 +73,6 @@ int main(int argc, char *argv[]) {
     data.prepare_data(parameter.train_data_path, parameter.valid_data_path, parameter.test_data_path);
 //  data.output_decoder(parameter.output_path);
 
-
     MPI_Comm comm_world = MPI_COMM_WORLD;
     // Get the number of processes
     int world_size;
@@ -91,16 +87,19 @@ int main(int argc, char *argv[]) {
     int name_len;
     MPI_Get_processor_name(processor_name, &name_len);
 
-
     if (world_rank == 0) {
+#ifdef DEBUG
+        cout << argc << endl;
+        for (int i = 0; i < argc; ++i) {
+            cout << argv[i] << endl;
+        }
+#endif
         print_info(parameter, data);
     }
 
-    string logfile = "log";
-    logfile += to_string(world_rank) + ".txt";
-    fstream fout(logfile.c_str());
-//    fout << "Hello world from rank" << world_rank << " out of " << world_size << " processors\n";
-
+#ifdef DEBUG
+    cout << "Hello world from rank" << world_rank << " out of " << world_size << " processors\n";
+#endif
     //Step 0: generate graph and save according to world rank...
 
     //first partition the training set into k equal workloads
@@ -113,6 +112,15 @@ int main(int argc, char *argv[]) {
         vtxdist[i] = i * workload;
     }
     vtxdist[world_size] = data.num_of_training_triples;
+
+#ifdef DEBUG
+    if(world_rank==0){
+        for(int i=0;i<=world_size;++i){
+            cout<<vtxdist[i]<<" ";
+        }
+        cout<<endl;
+    }
+#endif
 
     //transform training sample into undirected graph
     const int n = data.num_of_training_triples;
@@ -133,7 +141,7 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-//    cout << "machine " << world_rank << ": " << m << endl;
+    cout << "edges in machine " << world_rank << " : " << m << endl;
     //Step 1: save to METIS style
     //Transform undirected graph into METIS input format
     idx_t *xadj = new idx_t[end - start + 1];
@@ -141,7 +149,7 @@ int main(int argc, char *argv[]) {
 
     int64_t count = 0;
     for (int i = start; i < end; ++i) {
-        xadj[i] = count;
+        xadj[i-start] = count;
         for (int j = 0; j < n; ++j) {
             if (i != j) {
                 //judge whether i and j conflict with each other..
@@ -158,7 +166,9 @@ int main(int argc, char *argv[]) {
         }
     }
     xadj[end - start] = count;
-//    cout<<"m="<<m<<" count="<<count<<endl;
+#ifdef DEBUG
+    cout << "preprocess of machine " << world_rank << " completed. " << endl;
+#endif
 
     //Step 2: call parMetis
     //Run parmetis algorithm
@@ -234,9 +244,6 @@ int main(int argc, char *argv[]) {
     }
     fout2 << endl;
     fout2.close();
-    fout.close();
-
-
 
     // Finalize the MPI environment.
     MPI_Finalize();

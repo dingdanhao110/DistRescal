@@ -83,8 +83,8 @@ link_libraries(DistRESCAL ${Boost_LIBRARIES} ${MKL_LIBRARIES} ${METIS_LIBRARY} $
 #add_executable(testMatrixProduct src/testMatrixProduct.cpp)
 #add_executable(testScheduler src/testScheduler.cpp)
 #
-#add_executable(runRESCAL_NAIVE src/runRESCAL_NAIVE.cpp)
-#add_executable(runRESCAL_LOCK src/runRESCAL_LOCK.cpp)
+add_executable(runRESCAL_NAIVE src/runRESCAL_NAIVE.cpp)
+add_executable(runRESCAL_LOCK src/runRESCAL_LOCK.cpp)
 #add_executable(runRESCAL_NOLOCK src/runRESCAL_NOLOCK.cpp)
 #add_executable(runRESCAL_BLOCK src/runRESCAL_BLOCK.cpp)
 #add_executable(runRESCAL_BATCH src/runRESCAL_BATCH.cpp)
