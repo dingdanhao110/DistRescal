@@ -15,7 +15,7 @@
 ###############################################################################
 
 ### Job name
-#PBS -N rescal_naive_wn11
+#PBS -N transe_naive_wn11
 ### Declare job non-rerunable
 #PBS -r n
 #PBS -k oe
@@ -26,12 +26,12 @@
 ###    Queue fourday : Walltime can be  24:00:01 to 96:00:00                  #
 ###  #PBS -q parallel                                                         #
 ###############################################################################
-#PBS -q fourday
+#PBS -q parallel
 
 ###  Wall time required. This example is 30 min  ##############################
 ###  #PBS -l walltime=00:30:00                   			      #
 ###############################################################################
-#PBS -l walltime=96:00:00
+#PBS -l walltime=24:00:00
 
 ###  Number of node and cpu core  #############################################
 ###  For serial program, 1 core is used					      #
@@ -69,7 +69,7 @@ opt_method="AdaGrad"
 dimension="200"
 lambdaA="0 0.1 0.01"
 lambdaR="0 0.1 0.01"
-margin="1 2 4 8"
+margin="0.2 0.5 0.7 1.0 1.5"
 step_size="1 0.1 0.01"
 
 n="-1"
@@ -86,7 +86,7 @@ for d in $dimension; do
             for la in $lambdaA; do
                 for lr in $lambdaR; do
 OUTFILE=${PBS_JOBNAME}.${counter}.${JID}
-./runRESCAL_NAIVE --n $n --n_e $n_e --opt $opt_method --d $d --margin $m --step_size $l --lambdaA $la --lambdaR $lr --epoch $epoch --p_epoch $p_epoch --o_epoch $o_epoch --t_path $train_file --v_path $valid_file --e_path $test_file > ${OUTFILE}
+./runTRANSE_NAIVE --n $n --n_e $n_e --opt $opt_method --d $d --margin $m --step_size $l --lambdaA $la --lambdaR $lr --epoch $epoch --p_epoch $p_epoch --o_epoch $o_epoch --t_path $train_file --v_path $valid_file --e_path $test_file > ${OUTFILE}
 counter=`expr "$counter" + "1"`
                 done
             done
