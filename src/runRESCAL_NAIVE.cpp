@@ -37,13 +37,13 @@ int main(int argc, char **argv) {
             ("p_epoch", po::value<int>(&(parameter.print_epoch))->default_value(500), "print statistics every p_epoch")
             ("o_epoch", po::value<int>(&(parameter.output_epoch))->default_value(500), "output A and R every o_epoch")
             ("t_path",
-             po::value<string>(&(parameter.train_data_path))->default_value("../data/WN18/wordnet-mlj12-train.txt"),
+             po::value<string>(&(parameter.train_data_path))->default_value("../data/WN11/train.txt"),
              "path to training file")
             ("v_path",
-             po::value<string>(&(parameter.valid_data_path))->default_value("../data/WN18/wordnet-mlj12-valid.txt"),
+             po::value<string>(&(parameter.valid_data_path))->default_value("../data/WN11/dev.txt"),
              "path to validation file")
             ("e_path",
-             po::value<string>(&(parameter.test_data_path))->default_value("../data/WN18/wordnet-mlj12-test.txt"),
+             po::value<string>(&(parameter.test_data_path))->default_value("../data/WN11/test.txt"),
              "path to testing file")
             ("o_path", po::value<string>(&(parameter.output_path))->default_value("./output"), "path to output file");
 
