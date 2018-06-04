@@ -63,7 +63,7 @@ make
 
 train_file="../../data/WN11/train.txt"
 test_file="../../data/WN11/test.txt"
-valid_file="../../data/WN11/valid.txt"
+valid_file="../../data/WN11/dev.txt"
 
 opt_method="AdaGrad"
 dimension="200"
@@ -75,17 +75,17 @@ step_size="1 0.1 0.01"
 n="-1"
 n_e="-1"
 
-epoch=2000
-p_epoch=50
-o_epoch=2000
+epoch="2000"
+p_epoch="50"
+o_epoch="2000"
 
-counter = 0
+counter="0"
 for d in $dimension; do
     for m in $margin; do
         for l in $step_size; do
             for la in $lambdaA; do
                 for lr in $lambdaR; do
-OUTFILE=${PBS_JOBNAME}${counter}.${JID}
+OUTFILE=${PBS_JOBNAME}.${counter}.${JID}
 ./runRESCAL_LOCK --n $n --n_e $n_e --opt $opt_method --d $d --margin $m --step_size $l --lambdaA $la --lambdaR $lr --epoch $epoch --p_epoch $p_epoch --o_epoch $o_epoch --t_path $train_file --v_path $valid_file --e_path $test_file > ${OUTFILE}
 counter=`expr "$counter" + "1"`
                 done

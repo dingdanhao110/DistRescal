@@ -63,7 +63,7 @@ make
 
 train_file="../../data/FB13/train.txt"
 test_file="../../data/FB13/test.txt"
-valid_file="../../data/FB13/valid.txt"
+valid_file="../../data/FB13/dev.txt"
 
 opt_method="AdaGrad"
 dimension="200"
@@ -75,11 +75,11 @@ step_size="1 0.1 0.01"
 n="-1"
 n_e="-1"
 
-epoch=2000
-p_epoch=50
-o_epoch=2000
+epoch="2000"
+p_epoch="50"
+o_epoch="2000"
 
-counter = 0
+counter="0"
 for d in $dimension; do
     for m in $margin; do
         for l in $step_size; do
