@@ -45,6 +45,42 @@ namespace FileUtil {
 
     }
 
+    void read_triple_data_double_escape(string data_path, vector<Triple<string> > &triples, int &num_of_triple) {
+
+        ifstream data_file(data_path.c_str());
+        if (!data_file.good()) {
+            cerr << "cannot find file: " << data_path << endl;
+            exit(1);
+        }
+
+        string line;
+
+        num_of_triple = 0;
+        int line_num = 0;
+        while (getline(data_file, line)) {
+            ++line_num;
+            if (line_num % 2 == 0) { continue; }
+
+            boost::trim(line);
+            if (line.length() == 0) {
+                continue;
+            }
+            vector<string> par;
+            boost::split(par, line, boost::is_any_of("\t"));
+
+            boost::trim(par[0]);
+            boost::trim(par[1]);
+            boost::trim(par[2]);
+
+            triples.push_back(Triple<string>(par[0], par[1], par[2]));
+
+            num_of_triple++;
+        }
+
+        data_file.close();
+
+    }
+
     void output_matrix(value_type *data, const int row_num, const int col_num, const string file_name,
                        const string output_folder) {
 

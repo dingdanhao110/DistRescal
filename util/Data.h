@@ -54,8 +54,8 @@ public:
 
     void prepare_data(const string train_data_path, const string valid_data_path, const string test_data_path){
         read_triple_data(train_data_path, training_triple_strs, num_of_training_triples);
-        read_triple_data(test_data_path, testing_triple_strs, num_of_testing_triples);
-        read_triple_data(valid_data_path, valiation_triple_strs, num_of_validation_triples);
+        read_triple_data_double_escape(test_data_path, testing_triple_strs, num_of_testing_triples);
+        read_triple_data_double_escape(valid_data_path, valiation_triple_strs, num_of_validation_triples);
 
         encode_triples();
     }
