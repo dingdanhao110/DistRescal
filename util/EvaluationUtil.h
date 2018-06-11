@@ -528,6 +528,8 @@ namespace EvaluationUtil {
         int original_dim = parameter->dimension;
         parameter->dimension = rescal_d;
 
+        cout << "transformation completed!\n";
+
         hit_rate result = eval_hit_rate(parameter, data, rescalA, rescalR);
 
         delete[] rescalA;

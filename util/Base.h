@@ -70,6 +70,6 @@ typedef unsigned long long ull;
 
 const value_type min_not_zero_value = 1e-7;
 
-#define detailed_eval
+//#define detailed_eval
 
 #endif //BASEUTIL_H

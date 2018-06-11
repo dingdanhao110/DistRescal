@@ -36,11 +36,14 @@ namespace FileUtil {
             boost::trim(par[1]);
             boost::trim(par[2]);
 
+//            if(num_of_triple<5)
+//            cout<<par[0]<<" "<<par[1]<<" "<<par[2]<<" par[2]_size:"<<par[2].size()<<endl;
+
             triples.push_back(Triple<string>(par[0], par[1], par[2]));
 
             num_of_triple++;
         }
-
+//        cout<<data_path<<":"<<num_of_triple<<endl;
         data_file.close();
 
     }
@@ -72,11 +75,14 @@ namespace FileUtil {
             boost::trim(par[1]);
             boost::trim(par[2]);
 
+//            if(line_num<5)
+//            cout<<par[0]<<" "<<par[1]<<" "<<par[2]<<" par[2]_size:"<<par[2].size()<<endl;
+
             triples.push_back(Triple<string>(par[0], par[1], par[2]));
 
             num_of_triple++;
         }
-
+//        cout<<data_path<<":"<<num_of_triple<<endl;
         data_file.close();
 
     }

@@ -348,7 +348,7 @@ private:
 
         num_of_entity = entity_decoder.size();
         num_of_relation = relation_decoder.size();
-
+//
 //        vector<string> s;
 //        string training_triples_file = "training_triples.txt";
 //
@@ -368,7 +368,7 @@ private:
 //
 //        for (auto ptr = train_rel2tuples.begin(); ptr != train_rel2tuples.end(); ptr++) {
 //            for (Tuple<int> &t:ptr->second) {
-//                s.push_back(to_string(ptr->first) + "," + to_string(t.subject) + "," + to_string(t.object));
+//                s.push_back( to_string(t.subject) + ","+ to_string(ptr->first)  + "," + to_string(t.object));
 //            }
 //        }
 //
@@ -385,7 +385,7 @@ private:
 //
 //        for (auto ptr = test_rel2tuples.begin(); ptr != test_rel2tuples.end(); ptr++) {
 //            for (Tuple<int> &t:ptr->second) {
-//                s.push_back(to_string(ptr->first) + "," + to_string(t.subject) + "," + to_string(t.object));
+//                s.push_back(to_string(t.subject)+ "," +  to_string(ptr->first)+  "," + to_string(t.object));
 //            }
 //        }
 //
@@ -402,7 +402,7 @@ private:
 //
 //        for (auto ptr = valid_rel2tuples.begin(); ptr != valid_rel2tuples.end(); ptr++) {
 //            for (Tuple<int> &t:ptr->second) {
-//                s.push_back(to_string(ptr->first) + "," + to_string(t.subject) + "," + to_string(t.object));
+//                s.push_back(  to_string(t.subject) +","+  to_string(ptr->first) +  "," + to_string(t.object));
 //            }
 //        }
 //
