@@ -8,6 +8,7 @@
 #include "Calculator.h"
 #include "Parameter.h"
 #include "../alg/Sampler.h"
+#include "Monitor.h"
 
 using namespace Calculator;
 
@@ -357,12 +358,15 @@ namespace EvaluationUtil {
                 delete[] score_list;
             };
 
+            cout << "thread pool job assigned!\n";
+
             for(int thread_index = 0; thread_index < num_of_thread; thread_index++) {
                 eval_thread_pool->schedule(std::bind(compute_func, thread_index));
             }
 
             // wait until all threads finish
             eval_thread_pool->wait();
+            cout << "thread pool job finished!\n";
         }
 
         delete[] AR;

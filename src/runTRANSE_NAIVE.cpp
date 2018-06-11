@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
     desc.add_options()
             ("help", "produce help message")
             ("opt", po::value<string>(&(parameter.optimization))->default_value("AdaGrad"), "optimization method, i.e., SGD, AdaGrad or AdaDelta")
-            ("d", po::value<int>(&(parameter.dimension))->default_value(100), "number of dimensions")
+            ("d", po::value<int>(&(parameter.dimension))->default_value(20), "number of dimensions")
             ("show_loss", po::value<bool>(&(parameter.show_loss))->default_value(0), "whether the program shows loss values during training")
             ("lambdaA", po::value<value_type>(&(parameter.lambdaA))->default_value(0), "regularization weight for entity")
             ("lambdaR", po::value<value_type>(&(parameter.lambdaR))->default_value(0), "regularization weight for relation")
